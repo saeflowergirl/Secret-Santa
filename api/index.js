@@ -23,6 +23,11 @@ async function set(k, v) {
   const d = readFile(); d[k] = v; fs.writeFileSync(FILE, JSON.stringify(d));
 }
 
+async function del(k) {
+  if (U) return redis(['DEL', k]);
+  const d = readFile(); delete d[k]; fs.writeFileSync(FILE, JSON.stringify(d));
+}
+
 const rand = (n) => crypto.randomBytes(n).toString('hex');
 const clean = (s, n) => String(s ?? '').trim().slice(0, n);
 
@@ -158,6 +163,13 @@ module.exports = async (req, res) => {
     const ctx = await load(q.get('t') || b.t);
     if (!ctx) return send(res, 403, { error: 'Bad link' });
     const { game, host, idx } = ctx;
+
+    // Remove the game and every player's saved state for good. Host link only.
+    if (a === 'delete') {
+      if (!host) return send(res, 403, { error: 'Host only' });
+      await Promise.all([del('g:' + game.id), ...game.players.map((_, i) => del(`s:${game.id}:${i}`))]);
+      return send(res, 200, { ok: true });
+    }
 
     if (a === 'host') {
       if (!host) return send(res, 403, { error: 'Host only' });
