@@ -187,9 +187,13 @@ async function player() {
       <a class="btn alt" href="https://www.amazon.co.za" target="_blank" rel="noopener">Browse amazon.co.za</a>
       <a class="btn alt" href="https://www.temu.com" target="_blank" rel="noopener">Browse temu.com</a>
       <p class="muted">Temu ships slowly, so only pick from Temu if you add your list at least a month before the gift swap.</p>
-      <div><input class="wide" id="url" placeholder="Paste a takealot, amazon or temu product link"> <button id="add">Add item</button> <span class="err" id="err"></span></div>
-      ${me.items.map((i, n) => card(i, `<label class="muted">Price in Rand <input type="number" min="0" style="width:6rem" value="${esc(i.price || '')}" data-price="${n}"></label>
-        <button class="alt" data-rm="${n}">Remove</button>`)).join('')}
+      <div><input class="wide" id="url" placeholder="Paste a takealot, amazon or temu product link"> <button id="add">Add item link</button> <span class="err" id="err"></span></div>
+      ${me.items.map((i, n) => card(i, `<br><label class="muted">Price in Rand <input type="number" min="0" style="width:6rem" value="${esc(i.price || '')}" data-price="${n}"></label>
+        <button class="alt" data-rm="${n}">Remove</button>
+        <details ${i.image ? '' : 'open'}><summary class="muted">Fix name or photo</summary>
+          <label class="muted">Name <input class="wide" value="${esc(i.title)}" data-title="${n}"></label>
+          <label class="muted">Photo link (right-click the photo, Copy image address) <input class="wide" value="${esc(i.image)}" data-image="${n}" placeholder="https://..."></label>
+        </details>`)).join('')}
       <p>Total: <span class="${t > me.budget * 1.2 ? 'over' : ''}">R${t}</span> of R${me.budget}</p>
       <div id="target"></div>`;
     renderSpin();
@@ -224,11 +228,16 @@ async function player() {
       if (me.items.length >= me.maxItems) return ($('#err').textContent = `Max ${me.maxItems} items`);
       e.target.disabled = true; e.target.textContent = 'Loading...';
       try { me.items.push(await api('preview', null, `&t=${token}&url=${encodeURIComponent($('#url').value.trim())}`)); await save(); render(); }
-      catch (x) { $('#err').textContent = x.message; e.target.disabled = false; e.target.textContent = 'Add item'; }
+      catch (x) { $('#err').textContent = x.message; e.target.disabled = false; e.target.textContent = 'Add item link'; }
     }
   };
   app.onchange = async (e) => {
-    if (e.target.dataset.price != null) { me.items[e.target.dataset.price].price = Number(e.target.value) || 0; await save(); render(); }
+    const d = e.target.dataset;
+    if (d.price != null) me.items[d.price].price = Number(e.target.value) || 0;
+    else if (d.title != null) me.items[d.title].title = e.target.value.trim().slice(0, 200) || me.items[d.title].title;
+    else if (d.image != null) me.items[d.image].image = e.target.value.trim();
+    else return;
+    await save(); render();
   };
   render();
 }

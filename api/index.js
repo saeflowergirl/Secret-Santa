@@ -66,30 +66,50 @@ function meta(html, key) {
   return decode((a || b || [])[1] || '');
 }
 
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
+// Bot-check and generic landing pages must never be saved as if they were the product.
+const BLOCKED = /^(just a moment|attention required|access denied|page not found|robot check|sorry! something went wrong|amazon\.[a-z.]+\s*:\s*sorry|takealot\.com: online shopping|temu\b.*(shopping|online))/i;
+const text = (html) => decode(String(html || '').replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
+
 async function preview(raw) {
   let u;
   try { u = new URL(raw); } catch { throw new Error('That is not a link'); }
-  if (!/^https?:$/.test(u.protocol) || !SHOP.test(u.hostname)) throw new Error('Only takealot.com and amazon links are allowed');
+  if (!/^https?:$/.test(u.protocol) || !SHOP.test(u.hostname)) throw new Error('Only takealot.com, amazon and temu links are allowed');
   const item = { url: u.href, title: '', image: '', description: '', price: 0 };
+  const plid = /PLID(\d+)/i.exec(u.pathname)?.[1];
   try {
-    const r = await fetch(u.href, { headers: { 'user-agent': 'Mozilla/5.0 (compatible; Googlebot/2.1)', 'accept-language': 'en' }, signal: AbortSignal.timeout(8000) });
-    if (SHOP.test(new URL(r.url).hostname)) {
-      const html = (await r.text()).slice(0, 600000);
-      item.title = meta(html, 'og:title') || decode((/<title[^>]*>([^<]*)/i.exec(html) || [])[1] || '');
-      item.image = meta(html, 'og:image');
-      item.description = meta(html, 'og:description') || meta(html, 'description');
-      // Only trust a scraped price on takealot (Rand); amazon.com is usually dollars.
-      if (/takealot\.com$/.test(u.hostname)) item.price = Number(meta(html, 'product:price:amount') || (/"price"\s*:\s*"?(\d+(\.\d+)?)/.exec(html) || [])[1]) || 0;
+    if (plid && /takealot\.com$/.test(u.hostname)) {
+      // Takealot's site sits behind a bot check, but its product API answers plain requests.
+      const d = await fetch(`https://api.takealot.com/rest/v-1-11-0/product-details/PLID${plid}`, { headers: { 'user-agent': UA }, signal: AbortSignal.timeout(8000) }).then((r) => r.json());
+      item.title = d.core?.title || d.title || '';
+      item.image = String(d.gallery?.images?.[0] || '').replace('{size}', 'pdpxl');
+      item.description = text(d.description?.html);
+      item.price = Number(d.buybox?.items?.[0]?.price) || 0;
+    } else {
+      const r = await fetch(u.href, { headers: { 'user-agent': UA, accept: 'text/html,application/xhtml+xml', 'accept-language': 'en-ZA,en;q=0.9' }, signal: AbortSignal.timeout(8000) });
+      if (SHOP.test(new URL(r.url).hostname)) {
+        const html = (await r.text()).slice(0, 1500000);
+        const pageTitle = decode((/<title[^>]*>([^<]*)/i.exec(html) || [])[1] || '').trim();
+        if (!BLOCKED.test(pageTitle)) {
+          item.title = text((/id="productTitle"[^>]*>([\s\S]*?)<\/span>/i.exec(html) || [])[1]) || meta(html, 'og:title') || pageTitle;
+          item.image = meta(html, 'og:image') || (/"hiRes":"(https:[^"]+)"/.exec(html) || /id="landingImage"[^>]*src="([^"]+)"/i.exec(html) || [])[1] || '';
+          item.description = meta(html, 'og:description') || meta(html, 'description');
+          // Only trust a scraped price when it is certainly Rand (amazon.com is dollars).
+          if (/amazon\.co\.za$/.test(u.hostname)) item.price = Number((/a-offscreen">\s*R\s?([\d\s,]+(?:\.\d+)?)/.exec(html) || [])[1]?.replace(/[\s,]/g, '')) || 0;
+        }
+      }
     }
-  } catch { /* blocked or slow: fall back to the link slug below */ }
+  } catch { /* blocked or slow: fall back to the link name below, and the person can edit it */ }
+  if (BLOCKED.test(item.title)) { item.title = ''; item.image = ''; item.description = ''; }
   if (!item.title) {
-    const seg = u.pathname.split('/').filter((s) => s && !/^(dp|gp|product)$/i.test(s) && !/^(PLID|B0)\w+$/i.test(s)).sort((x, y) => y.length - x.length)[0] || u.hostname;
+    const seg = u.pathname.split('/').filter((s) => s && !/^(dp|gp|product|goods\.html)$/i.test(s) && !/^(PLID|B0)\w+$/i.test(s)).sort((x, y) => y.length - x.length)[0] || u.hostname;
     item.title = decodeURIComponent(seg).replace(/-g-\d+\.html$/i, '').replace(/[-_]+/g, ' ');
   }
-  item.title = item.title.split(' | ')[0].replace(/\s*-\s*Temu.*$/i, '').slice(0, 200); item.description = item.description.slice(0, 400);
+  item.title = item.title.split(' | ')[0].replace(/\s*-\s*Temu.*$/i, '').slice(0, 200);
+  item.description = item.description.slice(0, 400);
+  if (!/^https?:\/\//.test(item.image)) item.image = '';
   return item;
 }
-
 const send = (res, code, obj) => { res.statusCode = code; res.setHeader('content-type', 'application/json'); res.end(JSON.stringify(obj)); };
 
 async function body(req) {
@@ -186,7 +206,7 @@ module.exports = async (req, res) => {
       st.items = (b.items || []).slice(0, MAX_ITEMS).map((i) => {
         const u = new URL(i.url);
         if (!/^https?:$/.test(u.protocol) || !SHOP.test(u.hostname)) throw new Error('Bad item link');
-        return { url: u.href, title: clean(i.title, 200), image: clean(i.image, 600), description: clean(i.description, 400), price: Math.max(0, Number(i.price) || 0) };
+        return { url: u.href, title: clean(i.title, 200), image: /^https?:\/\//.test(i.image) ? clean(i.image, 600) : '', description: clean(i.description, 400), price: Math.max(0, Number(i.price) || 0) };
       });
       await set(`s:${game.id}:${idx}`, st);
       return send(res, 200, { ok: true });
