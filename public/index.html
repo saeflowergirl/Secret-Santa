@@ -48,8 +48,10 @@
   .pill .x{margin-left:.35rem;opacity:.55;cursor:pointer;font-weight:700}
   .pill .x:hover{opacity:1}  .price{display:inline-block;background:var(--green);color:#fff;font-weight:700;font-size:1.2rem;line-height:1.2;padding:.15rem .75rem;border-radius:999px;margin:.15rem 0 .3rem}
   .price.big{font-size:1.7rem;padding:.2rem 1rem}
-  .noprice{color:#9a6b00;font-style:italic;font-size:.9rem}
-  .total{font-size:1.25rem}  /* decorations */
+  .noprice{color:#b45f06;font-weight:700;font-size:1.3rem}
+  .nohint{color:#b45f06;font-weight:700;font-size:1.05rem;margin:.3rem 0}
+  .total{font-size:1.25rem}
+  input.need{border:2px solid var(--red);box-shadow:0 0 0 4px rgba(207,44,62,.25)}  /* decorations */
   #garland{position:absolute;top:0;left:0;right:0;height:120px;pointer-events:none;z-index:1}
   #garland svg{display:block;width:100%;height:120px}
   .tree{position:fixed;bottom:0;width:250px;pointer-events:none;z-index:1;filter:drop-shadow(0 0 18px rgba(255,220,140,.25))}
@@ -192,7 +194,7 @@ async function player() {
       <p class="muted">Temu ships slowly, so only pick from Temu if you add your list at least a month before the gift swap.</p>
       <div><input class="wide" id="url" placeholder="Paste a takealot, amazon or temu product link"> <button id="add">Add item link</button> <span class="err" id="err"></span></div>
       ${me.items.map((i, n) => card(i, `<br><label class="muted">Gift name <input class="wide" value="${esc(i.title)}" data-title="${n}"></label>
-        <label class="muted">Price in Rand <input type="number" min="0" style="width:6rem" value="${esc(i.price || '')}" data-price="${n}" placeholder="e.g. 250"></label>
+        ${i.price ? '' : '<div class="nohint">Please enter the price yourself: type what you see on the shop\'s site, in Rand.</div>'}<label class="muted">Price in Rand <input class="${i.price ? '' : 'need'}" type="number" min="0" style="width:6rem" value="${esc(i.price || '')}" data-price="${n}" placeholder="e.g. 250"></label>
         <button class="alt" data-rm="${n}">Remove</button>
         <details><summary class="muted">${i.image ? 'Change photo' : 'Add a photo (optional)'}</summary>
           <label class="muted">Right-click the product photo, choose Copy image address, paste here <input class="wide" value="${esc(i.image)}" data-image="${n}" placeholder="https://..."></label>
