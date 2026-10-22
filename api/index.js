@@ -5,8 +5,10 @@ const fs = require('fs');
 const BUDGET = 500;
 const MAX_ITEMS = 5;
 const SHOP = /(^|\.)(takealot\.com|amazon\.[a-z.]+|temu\.com)$/;
-const U = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-const T = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+// Vercel may prefix the integration's env vars (e.g. STORAGE_KV_REST_API_URL), so match on the suffix.
+const env = (suffix) => process.env[Object.keys(process.env).find((k) => k.endsWith(suffix)) || ''];
+const U = env('KV_REST_API_URL') || env('UPSTASH_REDIS_REST_URL');
+const T = env('KV_REST_API_TOKEN') || env('UPSTASH_REDIS_REST_TOKEN');
 const FILE = '.data.json';
 
 const redis = (cmd) => fetch(U, { method: 'POST', headers: { Authorization: 'Bearer ' + T }, body: JSON.stringify(cmd) }).then((r) => r.json());
