@@ -368,7 +368,7 @@ async function player() {
 <script>
 /* Christmas music: Boney M. and Michael Bublé playlists through the YouTube player (licensed by YouTube; nothing is hosted here). */
 (() => {
-  const LISTS = { bm: ['Boney M.', 'PLKtm2G15Yd1CfNtlpLfbcRACx0JY0ddRc'], mb: ['Michael Bublé', 'PLSn3M9lSKvoYyFuwUk9TkA-uyKYML7POl'] };
+  const LISTS = { bm: ['Boney M.', 'PLKtm2G15Yd1CfNtlpLfbcRACx0JY0ddRc'], mb: ['Michael Bublé', ['mBycW6iu8GM', 'l3l83C-we-k', 'fMAlTDQT_9k', 'pw3PhhSfcQg', '0bhsXykXxfg', '0yhI35F2NB0', 'oIKt5p3UmXg', 'Dkq3LD-4pmM', 'Mk6ZzzWWJ1A', 'xvHQO9LT6ZI', 'R8CBoVc_OMI']] }; // a playlist id, or a list of official video ids
   document.body.insertAdjacentHTML('beforeend', `<button id="more" class="alt" hidden>🎶 Christmas music</button>
     <div id="tunes">
       <div class="thead"><button class="alt on" data-k="bm">Boney M.</button><button class="alt" data-k="mb">Bublé</button><span class="tsp" id="tstat"></span>
@@ -378,7 +378,7 @@ async function player() {
   const box = document.getElementById('tunes'), more = document.getElementById('more'), stat = document.getElementById('tstat'), muteBtn = document.getElementById('tmute'), minBtn = document.getElementById('tmin');
   let yt, cur = 'bm', paused = false;
   const tabs = (k) => box.querySelectorAll('[data-k]').forEach((b) => b.classList.toggle('on', b.dataset.k === k));
-  const load = (k) => { cur = k; tabs(k); paused = false; muteBtn.textContent = '⏸'; yt.loadPlaylist({ listType: 'playlist', list: LISTS[k][1] }); yt.setShuffle(true); };
+  const load = (k) => { cur = k; tabs(k); paused = false; muteBtn.textContent = '⏸'; const src = LISTS[k][1]; yt.loadPlaylist(Array.isArray(src) ? src : { listType: 'playlist', list: src }); yt.setShuffle(true); };
   window.onYouTubeIframeAPIReady = () => {
     yt = new YT.Player('ytp', { width: '100%', height: '169', playerVars: { listType: 'playlist', list: LISTS.bm[1], autoplay: 1, rel: 0, playsinline: 1 }, events: {
       onReady: (e) => { e.target.setShuffle(true); e.target.playVideo(); setTimeout(() => { if (e.target.getPlayerState() !== 1) stat.textContent = 'Tap anywhere to start'; }, 1500); },
