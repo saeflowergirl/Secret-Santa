@@ -190,7 +190,7 @@ async function player() {
       <div><input class="wide" id="url" placeholder="Paste a takealot, amazon or temu product link"> <button id="add">Add item link</button> <span class="err" id="err"></span></div>
       ${me.items.map((i, n) => card(i, `<br><label class="muted">Price in Rand <input type="number" min="0" style="width:6rem" value="${esc(i.price || '')}" data-price="${n}"></label>
         <button class="alt" data-rm="${n}">Remove</button>
-        <details ${i.image ? '' : 'open'}><summary class="muted">Fix name or photo</summary>
+        <details ${i.image && !/\(add name\)$/.test(i.title) ? '' : 'open'}><summary class="muted">Fix name or photo</summary>
           <label class="muted">Name <input class="wide" value="${esc(i.title)}" data-title="${n}"></label>
           <label class="muted">Photo link (right-click the photo, Copy image address) <input class="wide" value="${esc(i.image)}" data-image="${n}" placeholder="https://..."></label>
         </details>`)).join('')}

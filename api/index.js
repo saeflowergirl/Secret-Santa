@@ -69,6 +69,7 @@ function meta(html, key) {
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
 // Bot-check and generic landing pages must never be saved as if they were the product.
 const BLOCKED = /^(just a moment|attention required|access denied|page not found|robot check|sorry! something went wrong|amazon\.[a-z.]+\s*:\s*sorry|takealot\.com: online shopping|temu\b)/i;
+const blocked = (t) => BLOCKED.test(t) || /^amazon\.[a-z.]+$/i.test(t);
 const text = (html) => decode(String(html || '').replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
 
 async function preview(raw) {
@@ -90,7 +91,7 @@ async function preview(raw) {
       if (SHOP.test(new URL(r.url).hostname)) {
         const html = (await r.text()).slice(0, 1500000);
         const pageTitle = decode((/<title[^>]*>([^<]*)/i.exec(html) || [])[1] || '').trim();
-        if (!BLOCKED.test(pageTitle)) {
+        if (!blocked(pageTitle)) {
           item.title = text((/id="productTitle"[^>]*>([\s\S]*?)<\/span>/i.exec(html) || [])[1]) || meta(html, 'og:title') || pageTitle;
           item.image = meta(html, 'og:image') || (/"hiRes":"(https:[^"]+)"/.exec(html) || /id="landingImage"[^>]*src="([^"]+)"/i.exec(html) || [])[1] || '';
           item.description = meta(html, 'og:description') || meta(html, 'description');
@@ -100,10 +101,17 @@ async function preview(raw) {
       }
     }
   } catch { /* blocked or slow: fall back to the link name below, and the person can edit it */ }
-  if (BLOCKED.test(item.title)) { item.title = ''; item.image = ''; item.description = ''; }
-  if (!item.title) {
-    const seg = u.pathname.split('/').filter((s) => s && !/^(dp|gp|product|goods\.html)$/i.test(s) && !/^(PLID|B0)\w+$/i.test(s)).sort((x, y) => y.length - x.length)[0] || u.hostname;
-    item.title = decodeURIComponent(seg).replace(/-g-\d+\.html$/i, '').replace(/[-_]+/g, ' ');
+  if (blocked(item.title)) { item.title = ''; item.image = ''; item.description = ''; }
+  const asin = /amazon\./.test(u.hostname) && /\/(?:dp|gp\/product|gp\/aw\/d)\/([A-Z0-9]{10})/.exec(u.pathname)?.[1];
+  if (asin && !item.image) {
+    try {
+      const url = `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.LZZZZZZZ.jpg`;
+      const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      if ((r.headers.get('content-type') || '').startsWith('image/jpeg') && (await r.arrayBuffer()).byteLength > 1000) item.image = url; // a missing product returns a 43-byte blank gif
+    } catch { /* no photo: the person can paste one */ }
+  }  if (!item.title) {
+    const seg = u.pathname.split('/').filter((s) => s && !/^(dp|gp|product|goods\.html)$/i.test(s) && !/^(PLID|B0)\w+$/i.test(s) && !/^ref=/i.test(s)).sort((x, y) => y.length - x.length)[0] || '';
+    item.title = seg ? decodeURIComponent(seg).replace(/-g-\d+\.html$/i, '').replace(/[-_]+/g, ' ') : (asin ? 'Amazon item' : 'Item') + ' (add name)';
   }
   item.title = item.title.split(' | ')[0].replace(/\s*-\s*Temu.*$/i, '').slice(0, 200);
   item.description = item.description.slice(0, 400);
