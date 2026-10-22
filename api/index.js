@@ -68,7 +68,7 @@ function meta(html, key) {
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
 // Bot-check and generic landing pages must never be saved as if they were the product.
-const BLOCKED = /^(just a moment|attention required|access denied|page not found|robot check|sorry! something went wrong|amazon\.[a-z.]+\s*:\s*sorry|takealot\.com: online shopping|temu\b.*(shopping|online))/i;
+const BLOCKED = /^(just a moment|attention required|access denied|page not found|robot check|sorry! something went wrong|amazon\.[a-z.]+\s*:\s*sorry|takealot\.com: online shopping|temu\b)/i;
 const text = (html) => decode(String(html || '').replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
 
 async function preview(raw) {
