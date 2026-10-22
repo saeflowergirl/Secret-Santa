@@ -182,7 +182,201 @@ async function player() {
     app.innerHTML = `<p>Hi <b>${esc(me.name)}</b>! <span class="muted">${esc(me.title)}</span></p>
       <div id="spin"></div>
       <h2>Your wish list</h2>
-      <p class="muted">Pick up to ${me.maxItems} things worth about R${me.budget} in total (a little over or under is fine). Find them, then paste the product link here.</p>
+      <p class="muted">Pick up to ${me.maxItems} things worth about R${me.budget} in total (a little over or under is fine). Find them, then paste the product link here. Takealot fills in everything for you. For Amazon and Temu, just check the name and add the price.</p>
+      <a class="btn alt" href="https://www.takealot.com" target="_blank" rel="noopener">Browse takealot.com</a>
+      <a class="btn alt" href="https://www.amazon.co.za" target="_blank" rel="noopener">Browse amazon.co.za</a>
+      <a class="btn alt" href="https://www.temu.com" target="_blank" rel="noopener">Browse temu.com</a>
+      <p class="muted">Temu ships slowly, so only pick from Temu if you add your list at least a month before the gift swap.</p>
+      <div><input class="wide" id="url" placeholder="Paste a takealot, amazon or temu product link"> <button id="add">Add item link</button> <span class="err" id="err"></span></div>
+      ${me.items.map((i, n) => card(i, `<br><label class="muted">Gift name <input class="wide" value="${esc(i.title)}" data-title="${n}"></label>
+        <label class="muted">Price in Rand <input type="number" min="0" style="width:6rem" value="${esc(i.price || '')}" data-price="${n}" placeholder="e.g. 250"></label>
+        <button class="alt" data-rm="${n}">Remove</button>
+        <details><summary class="muted">${i.image ? 'Change photo' : 'Add a photo (optional)'}</summary>
+          <label class="muted">Right-click the product photo, choose Copy image address, paste here <input class="wide" value="${esc(i.image)}" data-image="${n}" placeholder="https://..."></label>
+        </details>`)).join('')} lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Secret Santa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--red:#b3202f;--deep:#8a1424;--green:#14573a;--gold:#e3bd6a;--cream:#fffaf0}
+  *{box-sizing:border-box}
+  html{overflow-x:hidden}
+  body{font:17px system-ui,sans-serif;max-width:660px;margin:0 auto;padding:0 1rem 150px;color:#f6efe0;min-height:100vh;
+    background:radial-gradient(ellipse at 50% -10%,#2a8a5c 0%,#14573a 38%,#0b3a27 70%,#06241a 100%) fixed}
+  #app{position:relative;z-index:2}
+  h1,h2,h3{font-family:'Cormorant Garamond',Georgia,serif;font-weight:700}
+  header{text-align:center;margin:7.2rem 0 1.4rem;position:relative;z-index:2}
+  h1{font-size:3.8rem;line-height:1;margin:0;color:#fff8e6;text-shadow:0 2px 0 #7a1522,0 0 24px rgba(255,210,122,.5)}
+  .kicker{color:var(--gold);letter-spacing:.35em;font-size:.75rem;text-transform:uppercase;margin-top:.7rem}
+  .holly{display:inline-block;width:64px;vertical-align:middle;margin:0 .2rem}
+  h2{font-size:1.8rem;color:#ffe9b0;border-bottom:1px solid var(--gold);padding-bottom:.2rem;margin-top:1.8rem}
+  p{line-height:1.45}
+  a{color:#ffd98a}
+  textarea,input,select,button{font:inherit;padding:.6rem;margin:.3rem 0;border-radius:10px;border:1px solid var(--gold)}
+  textarea,input,select{background:var(--cream);color:#2a2622}
+  textarea,input.wide{width:100%}
+  button,a.btn{background:linear-gradient(#cf2c3e,var(--deep));color:#fff;cursor:pointer;text-decoration:none;display:inline-block;padding:.6rem .95rem;border-radius:10px;border:1px solid var(--gold);box-shadow:0 2px 6px #0005}
+  button.alt,a.alt{background:var(--cream);color:var(--deep);border:1px solid var(--gold)}
+  button:disabled{opacity:.6}
+  .card{display:flex;gap:.8rem;background:var(--cream);color:#2a2622;border-radius:12px;padding:.8rem;margin:.6rem 0;border:1px solid var(--gold);box-shadow:0 3px 10px #0004}
+  .card img{width:80px;height:80px;object-fit:contain;flex:none}
+  .card p{margin:.2rem 0;font-size:.88rem;color:#555}
+  .card b{display:block}
+  .card .muted{color:#666}
+  .spin{font-family:'Cormorant Garamond',Georgia,serif;font-size:2.2rem;text-align:center;padding:1.5rem;background:var(--cream);color:var(--green);border-radius:14px;margin:1rem 0;border:2px solid var(--gold);box-shadow:0 4px 14px #0005}
+  .spin button{font-family:system-ui,sans-serif;font-size:1rem}
+  .over,.err{color:#ffb3ba;font-weight:600}
+  .muted{color:rgba(255,255,255,.72);font-size:.85rem}
+  table{width:100%;border-collapse:collapse} td{vertical-align:top;border-top:1px solid rgba(255,255,255,.2);padding:.6rem .3rem}
+  dialog{background:var(--cream);color:#2a2622}
+  dialog .muted{color:#666}
+  .pills{display:flex;flex-wrap:wrap;gap:.45rem;margin:.4rem 0}
+  .pill{background:var(--cream);color:#2a2622;border:1px solid var(--gold);border-radius:999px;padding:.3rem .85rem;font-size:.95rem;box-shadow:0 2px 5px #0004;user-select:none}
+  .pill[data-pick],.pill[data-partner]{cursor:pointer}
+  .pill.sel{background:linear-gradient(#cf2c3e,var(--deep));color:#fff}
+  .pill.used{opacity:.5;cursor:default}
+  .pill.couple{background:#ffe9b0}
+  .pill .x{margin-left:.35rem;opacity:.55;cursor:pointer;font-weight:700}
+  .pill .x:hover{opacity:1}  /* decorations */
+  #garland{position:absolute;top:0;left:0;right:0;height:120px;pointer-events:none;z-index:1}
+  #garland svg{display:block;width:100%;height:120px}
+  .tree{position:fixed;bottom:0;width:250px;pointer-events:none;z-index:1;filter:drop-shadow(0 0 18px rgba(255,220,140,.25))}
+  .tree.l{left:6px} .tree.r{right:6px;transform:scaleX(-1)}
+  .tw{animation:tw 2.6s ease-in-out infinite}
+  @keyframes tw{50%{opacity:.25}}
+  #snow{position:fixed;inset:0;pointer-events:none;z-index:6}
+  #music{position:fixed;top:12px;right:12px;z-index:10;border-radius:999px;font-size:.9rem}
+  @media (max-width:980px){.tree{width:92px}h1{font-size:2.8rem}}
+  @media (prefers-reduced-motion:reduce){.tw{animation:none}}
+</style>
+</head>
+<body>
+<div id="garland"></div>
+<canvas id="snow"></canvas>
+<div class="tree l" id="treeL"></div><div class="tree r" id="treeR"></div>
+<button id="music" class="alt" aria-pressed="false">♪ Play carols</button>
+<header><h1>Secret Santa</h1><div class="kicker"><svg class="holly" viewBox="0 0 64 40" aria-hidden="true"><g transform="translate(32 22)"><path d="M0 0C-6 -14 -24 -16 -30 -6C-24 -2 -26 4 -20 6C-16 10 -8 8 0 0Z" fill="#2a7a56" stroke="#0f3a28"/><path d="M0 0C6 -14 24 -16 30 -6C24 -2 26 4 20 6C16 10 8 8 0 0Z" fill="#3f9a70" stroke="#0f3a28"/><path d="M-26 -5L-2 -1M26 -5L2 -1" stroke="#0f3a28" stroke-width="1" fill="none"/><circle cx="-3" cy="2" r="5" fill="#d92b3d"/><circle cx="4" cy="3" r="5" fill="#b3202f"/><circle cx="0" cy="8" r="5" fill="#d92b3d"/><circle cx="-4.5" cy="0.5" r="1.3" fill="#ffd0d6"/><circle cx="2.5" cy="1.5" r="1.3" fill="#ffd0d6"/></g></svg> &nbsp;merry &amp; bright&nbsp; <svg class="holly" style="transform:scaleX(-1)" viewBox="0 0 64 40" aria-hidden="true"><g transform="translate(32 22)"><path d="M0 0C-6 -14 -24 -16 -30 -6C-24 -2 -26 4 -20 6C-16 10 -8 8 0 0Z" fill="#2a7a56" stroke="#0f3a28"/><path d="M0 0C6 -14 24 -16 30 -6C24 -2 26 4 20 6C16 10 8 8 0 0Z" fill="#3f9a70" stroke="#0f3a28"/><path d="M-26 -5L-2 -1M26 -5L2 -1" stroke="#0f3a28" stroke-width="1" fill="none"/><circle cx="-3" cy="2" r="5" fill="#d92b3d"/><circle cx="4" cy="3" r="5" fill="#b3202f"/><circle cx="0" cy="8" r="5" fill="#d92b3d"/><circle cx="-4.5" cy="0.5" r="1.3" fill="#ffd0d6"/><circle cx="2.5" cy="1.5" r="1.3" fill="#ffd0d6"/></g></svg></div></header>
+<div id="app"></div>
+<script>
+const $ = (s) => document.querySelector(s);
+const app = $('#app');
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const [, role, token] = location.pathname.split('/');
+
+async function api(a, data, qs = '') {
+  const r = await fetch(`/api?a=${a}${qs}`, data ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) } : undefined);
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error);
+  return j;
+}
+const ITEMS = [];
+const card = (i, extra = '') => `<div class="card">${i.image ? `<img src="${esc(i.image)}" referrerpolicy="no-referrer" alt="">` : ''}
+  <div><b>${esc(i.title)}</b><p>${i.price ? 'R' + esc(i.price) : 'price not set'}</p><button data-view="${ITEMS.push(i) - 1}">View</button> ${extra}</div></div>`;
+
+// Item popup: native <dialog>, filled on demand.
+document.body.insertAdjacentHTML('beforeend', '<dialog id="dlg" style="max-width:480px;border-radius:12px;border:0;padding:1.2rem"></dialog>');
+document.addEventListener('click', (e) => {
+  const dlg = $('#dlg');
+  if (e.target.dataset.view != null) {
+    const i = ITEMS[e.target.dataset.view];
+    dlg.innerHTML = `${i.image ? `<img src="${esc(i.image)}" referrerpolicy="no-referrer" alt="" style="width:100%;max-height:260px;object-fit:contain">` : ''}
+      <h3>${esc(i.title)}</h3><p>${esc(i.description) || '<span class="muted">No description available.</span>'}</p>
+      <p><b>${i.price ? 'R' + esc(i.price) : 'Price not set'}</b></p>
+      <a class="btn" href="${esc(i.url)}" target="_blank" rel="noopener">Go to shop</a> <button class="alt" data-close>Close</button>`;
+    dlg.showModal();
+  } else if (e.target.dataset.close != null || e.target === dlg) dlg.close();
+});
+
+/* ---------- home: host creates the game ---------- */
+function home() {
+  const games = JSON.parse(localStorage.games || '[]');
+  let names = [], couples = [], sel = [];
+  app.innerHTML = `${games.length ? `<h2>Your games</h2>${games.map((g) => `<p><a href="/h/${esc(g.host)}">${esc(g.title)}</a></p>`).join('')}<h2>Start a new game</h2>` : ''}
+    <p>Group name (for example "Sarah's family"):</p>
+    <input class="wide" id="title" placeholder="Sarah's family">
+    <p>You're the host. Who's taking part? Type a name and press Enter.</p>
+    <div class="pills" id="nameP"></div>
+    <input class="wide" id="nameIn" placeholder="Type a name, then press Enter" autocomplete="off">
+    <div id="coupleBox" hidden>
+      <p>Couples: tap the people who must not draw each other, then link them.</p>
+      <div class="pills" id="pickP"></div>
+      <button type="button" class="alt" id="link" disabled>♥ Link as couple</button>
+      <div class="pills" id="coupleP"></div>
+    </div>
+    <p><button id="go">Create game and draw</button> <span class="err" id="err"></span></p>`;
+  const used = (n) => couples.some((c) => c.includes(n));
+  const render = () => {
+    $('#nameP').innerHTML = names.map((n) => `<span class="pill">${esc(n)} <b class="x" data-rm="${esc(n)}">×</b></span>`).join('');
+    $('#coupleBox').hidden = names.length < 2;
+    $('#pickP').innerHTML = names.map((n) => `<span class="pill${sel.includes(n) ? ' sel' : ''}${used(n) ? ' used' : ''}" data-pick="${esc(n)}">${esc(n)}${used(n) ? ' ♥' : ''}</span>`).join('');
+    $('#link').disabled = sel.length < 2;
+    $('#coupleP').innerHTML = couples.map((c, i) => `<span class="pill couple">${c.map(esc).join(' ♥ ')} <b class="x" data-uncouple="${i}">×</b></span>`).join('');
+  };
+  const add = (raw) => {
+    for (const n of raw.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)) if (!names.some((x) => x.toLowerCase() === n.toLowerCase())) names.push(n);
+    $('#nameIn').value = ''; render();
+  };
+  $('#nameIn').onkeydown = (e) => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); add(e.target.value); } };
+  $('#nameIn').onpaste = (e) => { e.preventDefault(); add(e.target.value + e.clipboardData.getData('text')); };
+  app.onclick = (e) => {
+    const d = e.target.dataset;
+    if (d.rm != null) { names = names.filter((n) => n !== d.rm); sel = sel.filter((n) => n !== d.rm); couples = couples.map((c) => c.filter((n) => n !== d.rm)).filter((c) => c.length > 1); }
+    if (d.pick != null && !used(d.pick)) sel = sel.includes(d.pick) ? sel.filter((n) => n !== d.pick) : [...sel, d.pick];
+    if (d.uncouple != null) couples.splice(d.uncouple, 1);
+    if (e.target.id === 'link' && sel.length > 1) { couples.push(sel); sel = []; }
+    render();
+  };
+  $('#go').onclick = async () => {
+    add($('#nameIn').value);
+    try {
+      const r = await api('create', { title: $('#title').value, names, couples });
+      location.href = '/h/' + r.host;
+    } catch (e) { $('#err').textContent = e.message; }
+  };
+  render();
+}
+/* ---------- host master view ---------- */
+async function host() {
+  const { title, players, budget } = await api('host', null, '&t=' + token);
+  const origin = location.origin;
+  const games = JSON.parse(localStorage.games || '[]').filter((g) => g.host !== token);
+  localStorage.games = JSON.stringify([...games, { title, host: token }]);
+  app.innerHTML = `<p><a href="/">All my games</a></p><h2>${esc(title)}</h2><p>Master view. Bookmark this page and keep it private. Send each person their own link (don't open them yourself if you want to stay surprised).</p>
+    <table>${players.map((p) => `<tr><td><b>${esc(p.name)}</b><br><span class="muted">${p.revealed ? 'has spun' : 'not spun yet'}</span><br>
+      <button class="alt" data-link="${esc(origin + '/p/' + p.token)}">Copy link</button></td>
+      <td><button class="alt" data-reveal>Reveal</button>
+        <div hidden>gives to <b>${esc(p.gives)}</b><br>${p.items.length ? p.items.map((i) => `<div class="muted"><a href="${esc(i.url)}" target="_blank" rel="noopener">${esc(i.title)}</a> ${i.price ? 'R' + esc(i.price) : ''}</div>`).join('') : '<span class="muted">no wish list yet</span>'}</div></td></tr>`).join('')}</table>
+    <p class="muted">Budget R${budget} each. Wish lists update when you refresh.</p>
+    <h2>Add someone</h2>
+    <input id="newname" placeholder="Name"> <p class="muted">Couple with (tap anyone they must not draw, optional):</p><div class="pills" id="partnerP">${players.map((p) => `<span class="pill" data-partner="${esc(p.name)}">${esc(p.name)}</span>`).join('')}</div>
+    <button id="addp">Add</button> <span class="err" id="err"></span>
+    <h2>Start over</h2>
+    <button class="alt" id="redraw">Redraw everyone</button> <span class="muted">New draw, everyone spins again. Wish lists are kept.</span>`;
+  const act = async (a, data) => { try { await api(a, { t: token, ...data }); host(); } catch (x) { $('#err').textContent = x.message; } };
+  $('#addp').onclick = () => act('add', { name: $('#newname').value, partners: [...document.querySelectorAll('#partnerP .sel')].map((x) => x.dataset.partner) });
+  $('#redraw').onclick = () => confirm('Redraw everyone? Anyone who already spun will have a new person.') && act('redraw');
+  app.onclick = (e) => {
+    if (e.target.dataset.partner != null) e.target.classList.toggle('sel');
+    if (e.target.dataset.reveal != null) { const d = e.target.nextElementSibling; d.hidden = !d.hidden; e.target.textContent = d.hidden ? 'Reveal' : 'Hide'; }
+    const l = e.target.dataset.link; if (l) navigator.clipboard.writeText(l).then(() => (e.target.textContent = 'Copied!')); };
+}
+
+/* ---------- player view ---------- */
+async function player() {
+  let me = await api('me', null, '&t=' + token);
+  const total = () => me.items.reduce((s, i) => s + (Number(i.price) || 0), 0);
+  const save = () => api('items', { t: token, items: me.items });
+
+  function render() {
+    const t = total();
+    ITEMS.length = 0;
+    app.innerHTML = `<p>Hi <b>${esc(me.name)}</b>! <span class="muted">${esc(me.title)}</span></p>
+      <div id="spin"></div>
+      <h2>Your wish list</h2>
+      <p class="muted">Pick up to ${me.maxItems} things worth about R${me.budget} in total (a little over or under is fine). Find them, then paste the product link here. Takealot fills in everything for you. For Amazon and Temu, just check the name and add the price.</p>
       <a class="btn alt" href="https://www.takealot.com" target="_blank" rel="noopener">Browse takealot.com</a>
       <a class="btn alt" href="https://www.amazon.co.za" target="_blank" rel="noopener">Browse amazon.co.za</a>
       <a class="btn alt" href="https://www.temu.com" target="_blank" rel="noopener">Browse temu.com</a>
