@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Secret Santa</title>
+<style>
+  body{font:17px system-ui,sans-serif;max-width:640px;margin:1.5rem auto;padding:0 1rem;background:#fff5f5;color:#222}
+  h1{color:#c0392b;margin-bottom:.2rem} h2{margin-top:1.6rem}
+  textarea,input,button{font:inherit;box-sizing:border-box;padding:.55rem;margin:.3rem 0;border-radius:8px;border:1px solid #c0392b}
+  textarea,input.wide{width:100%}
+  button,a.btn{background:#c0392b;color:#fff;cursor:pointer;text-decoration:none;display:inline-block;padding:.55rem .8rem;border-radius:8px;border:0}
+  button.alt,a.alt{background:#fff;color:#c0392b;border:1px solid #c0392b}
+  .card{display:flex;gap:.8rem;background:#fff;border-radius:10px;padding:.7rem;margin:.5rem 0;box-shadow:0 1px 3px #0002}
+  .card img{width:80px;height:80px;object-fit:contain;flex:none}
+  .card p{margin:.2rem 0;font-size:.85rem;color:#555}
+  .card b{display:block}
+  .spin{font-size:2rem;text-align:center;padding:1.5rem;background:#fff;border-radius:12px;margin:1rem 0}
+  .over{color:#c0392b;font-weight:bold} .err{color:#c0392b} .muted{color:#777;font-size:.85rem}
+  table{width:100%;border-collapse:collapse} td{vertical-align:top;border-top:1px solid #ecc;padding:.5rem .3rem}
+</style>
+</head>
+<body>
+<h1>🎅 Secret Santa</h1>
+<div id="app"></div>
+<script>
+const $ = (s) => document.querySelector(s);
+const app = $('#app');
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const [, role, token] = location.pathname.split('/');
+
+async function api(a, data, qs = '') {
+  const r = await fetch(`/api?a=${a}${qs}`, data ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) } : undefined);
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error);
+  return j;
+}
+const ITEMS = [];
+const card = (i, extra = '') => `<div class="card">${i.image ? `<img src="${esc(i.image)}" referrerpolicy="no-referrer" alt="">` : ''}
+  <div><b>${esc(i.title)}</b><p>${i.price ? 'R' + esc(i.price) : 'price not set'}</p><button data-view="${ITEMS.push(i) - 1}">View</button> ${extra}</div></div>`;
+
+// Item popup: native <dialog>, filled on demand.
+document.body.insertAdjacentHTML('beforeend', '<dialog id="dlg" style="max-width:480px;border-radius:12px;border:0;padding:1.2rem"></dialog>');
+document.addEventListener('click', (e) => {
+  const dlg = $('#dlg');
+  if (e.target.dataset.view != null) {
+    const i = ITEMS[e.target.dataset.view];
+    dlg.innerHTML = `${i.image ? `<img src="${esc(i.image)}" referrerpolicy="no-referrer" alt="" style="width:100%;max-height:260px;object-fit:contain">` : ''}
+      <h3>${esc(i.title)}</h3><p>${esc(i.description) || '<span class="muted">No description available.</span>'}</p>
+      <p><b>${i.price ? 'R' + esc(i.price) : 'Price not set'}</b></p>
+      <a class="btn" href="${esc(i.url)}" target="_blank" rel="noopener">Go to shop</a> <button class="alt" data-close>Close</button>`;
+    dlg.showModal();
+  } else if (e.target.dataset.close != null || e.target === dlg) dlg.close();
+});
+
+/* ---------- home: host creates the game ---------- */
+function home() {
+  const games = JSON.parse(localStorage.games || '[]');
+  app.innerHTML = `${games.length ? `<h2>Your games</h2>${games.map((g) => `<p><a href="/h/${esc(g.host)}">${esc(g.title)}</a></p>`).join('')}<h2>Start a new game</h2>` : ''}
+    <p>Group name (for example "Sarah's family"):</p>
+    <input class="wide" id="title" placeholder="Sarah's family">
+    <p>You're the host. Enter everyone taking part, one name per line:</p>
+    <textarea id="names" rows="7" placeholder="Kurt&#10;Sarah&#10;Pixie Roo&#10;Bear&#10;Furgus&#10;Jake"></textarea>
+    <p>Couples who must not draw each other, one pair per line, like <b>Kurt + Sarah</b>:</p>
+    <textarea id="couples" rows="4" placeholder="Kurt + Sarah&#10;Pixie Roo + Bear&#10;Furgus + Jake"></textarea>
+    <button id="go">Create game and draw</button> <span class="err" id="err"></span>`;
+  $('#go').onclick = async () => {
+    const lines = (id) => $(id).value.split('\n').map((s) => s.trim()).filter(Boolean);
+    try {
+      const r = await api('create', { title: $('#title').value, names: lines('#names'), couples: lines('#couples').map((l) => l.split(/\s*[+&]\s*/)) });
+      location.href = '/h/' + r.host;
+    } catch (e) { $('#err').textContent = e.message; }
+  };
+}
+
+/* ---------- host master view ---------- */
+async function host() {
+  const { title, players, budget } = await api('host', null, '&t=' + token);
+  const origin = location.origin;
+  const games = JSON.parse(localStorage.games || '[]').filter((g) => g.host !== token);
+  localStorage.games = JSON.stringify([...games, { title, host: token }]);
+  app.innerHTML = `<p><a href="/">All my games</a></p><h2>${esc(title)}</h2><p>Master view. Bookmark this page and keep it private. Send each person their own link (don't open them yourself if you want to stay surprised).</p>
+    <table>${players.map((p) => `<tr><td><b>${esc(p.name)}</b><br><span class="muted">${p.revealed ? 'has spun' : 'not spun yet'}</span><br>
+      <button class="alt" data-link="${esc(origin + '/p/' + p.token)}">Copy link</button></td>
+      <td><button class="alt" data-reveal>Reveal</button>
+        <div hidden>gives to <b>${esc(p.gives)}</b><br>${p.items.length ? p.items.map((i) => `<div class="muted"><a href="${esc(i.url)}" target="_blank" rel="noopener">${esc(i.title)}</a> ${i.price ? 'R' + esc(i.price) : ''}</div>`).join('') : '<span class="muted">no wish list yet</span>'}</div></td></tr>`).join('')}</table>
+    <p class="muted">Budget R${budget} each. Wish lists update when you refresh.</p>
+    <h2>Add someone</h2>
+    <input id="newname" placeholder="Name"> <select id="partner"><option value="">No partner in group</option>${players.map((p) => `<option>${esc(p.name)}</option>`).join('')}</select>
+    <button id="addp">Add</button> <span class="err" id="err"></span>
+    <h2>Start over</h2>
+    <button class="alt" id="redraw">Redraw everyone</button> <span class="muted">New draw, everyone spins again. Wish lists are kept.</span>`;
+  const act = async (a, data) => { try { await api(a, { t: token, ...data }); host(); } catch (x) { $('#err').textContent = x.message; } };
+  $('#addp').onclick = () => act('add', { name: $('#newname').value, partner: $('#partner').value });
+  $('#redraw').onclick = () => confirm('Redraw everyone? Anyone who already spun will have a new person.') && act('redraw');
+  app.onclick = (e) => {
+    if (e.target.dataset.reveal != null) { const d = e.target.nextElementSibling; d.hidden = !d.hidden; e.target.textContent = d.hidden ? 'Reveal' : 'Hide'; }
+    const l = e.target.dataset.link; if (l) navigator.clipboard.writeText(l).then(() => (e.target.textContent = 'Copied!')); };
+}
+
+/* ---------- player view ---------- */
+async function player() {
+  let me = await api('me', null, '&t=' + token);
+  const total = () => me.items.reduce((s, i) => s + (Number(i.price) || 0), 0);
+  const save = () => api('items', { t: token, items: me.items });
+
+  function render() {
+    const t = total();
+    ITEMS.length = 0;
+    app.innerHTML = `<p>Hi <b>${esc(me.name)}</b>! <span class="muted">${esc(me.title)}</span></p>
+      <div id="spin"></div>
+      <h2>Your wish list</h2>
+      <p class="muted">Pick up to ${me.maxItems} things worth about R${me.budget} in total (a little over or under is fine). Find them, then paste the product link here.</p>
+      <a class="btn alt" href="https://www.takealot.com" target="_blank" rel="noopener">Browse takealot.com</a>
+      <a class="btn alt" href="https://www.amazon.co.za" target="_blank" rel="noopener">Browse amazon.co.za</a>
+      <a class="btn alt" href="https://www.temu.com" target="_blank" rel="noopener">Browse temu.com</a>
+      <p class="muted">Temu ships slowly, so only pick from Temu if you add your list at least a month before the gift swap.</p>
+      <div><input class="wide" id="url" placeholder="Paste a takealot, amazon or temu product link"> <button id="add">Add item</button> <span class="err" id="err"></span></div>
+      ${me.items.map((i, n) => card(i, `<label class="muted">Price in Rand <input type="number" min="0" style="width:6rem" value="${esc(i.price || '')}" data-price="${n}"></label>
+        <button class="alt" data-rm="${n}">Remove</button>`)).join('')}
+      <p>Total: <span class="${t > me.budget * 1.2 ? 'over' : ''}">R${t}</span> of R${me.budget}</p>
+      <div id="target"></div>`;
+    renderSpin();
+    if (me.revealed) renderTarget();
+  }
+
+  function renderSpin() {
+    $('#spin').innerHTML = me.revealed
+      ? `<div class="spin">You are Secret Santa for<br><b>🎁 ${esc(me.target.name)}</b></div>`
+      : `<div class="spin" id="wheel">Ready to find out who you got?<br><button id="spinbtn">🎲 Spin!</button></div>`;
+    const b = $('#spinbtn');
+    if (!b) return;
+    b.onclick = async () => {
+      b.disabled = true;
+      const r = await api('reveal', { t: token });
+      const w = $('#wheel'); let k = 0;
+      const timer = setInterval(() => { w.textContent = me.names[k++ % me.names.length]; }, 90);
+      setTimeout(() => { clearInterval(timer); me = r; render(); }, 3000);
+    };
+  }
+
+  function renderTarget() {
+    $('#target').innerHTML = `<h2>Gift ideas from ${esc(me.target.name)}</h2>` +
+      (me.target.items.length ? me.target.items.map((i) => card(i)).join('') : '<p class="muted">They have not picked anything yet. Check back later (refresh the page).</p>');
+  }
+
+  app.onclick = async (e) => {
+    const d = e.target.dataset;
+    if (d.rm != null) { me.items.splice(d.rm, 1); await save(); render(); }
+    if (e.target.id === 'add') {
+      $('#err').textContent = '';
+      if (me.items.length >= me.maxItems) return ($('#err').textContent = `Max ${me.maxItems} items`);
+      e.target.disabled = true; e.target.textContent = 'Loading...';
+      try { me.items.push(await api('preview', null, `&t=${token}&url=${encodeURIComponent($('#url').value.trim())}`)); await save(); render(); }
+      catch (x) { $('#err').textContent = x.message; e.target.disabled = false; e.target.textContent = 'Add item'; }
+    }
+  };
+  app.onchange = async (e) => {
+    if (e.target.dataset.price != null) { me.items[e.target.dataset.price].price = Number(e.target.value) || 0; await save(); render(); }
+  };
+  render();
+}
+
+(role === 'h' ? host() : role === 'p' ? player() : Promise.resolve(home())).catch((e) => (app.innerHTML = `<p class="err">${esc(e.message)}</p>`));
+</script>
+</body>
+</html>
