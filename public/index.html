@@ -56,7 +56,9 @@
   #tunes .thead{display:flex;gap:.3rem;align-items:center;flex-wrap:wrap} #tunes .tsp{flex:1}
   #tunes button{padding:.25rem .65rem;font-size:.82rem;margin:0;box-shadow:none}
   #tunes.min #tbody{height:0;overflow:hidden}
-  #tunes p{font-size:.78rem;margin:.4rem 0 0}
+  #tunes button.on{background:var(--green);color:#fff}
+  #tstat{font-size:.75rem;color:#9a6b00;font-weight:600}
+  #tbody{margin-top:.4rem;border-radius:10px;overflow:hidden}
   button.del{background:transparent;color:#ffb3ba;border:1px solid rgba(255,179,186,.45);padding:.1rem .6rem;font-size:.78rem;box-shadow:none;margin-left:.5rem;border-radius:999px;opacity:.85}
   button.del:hover{background:rgba(179,32,47,.45);color:#fff;opacity:1}
   #tunes[hidden]{display:none}
@@ -78,7 +80,7 @@
 <div id="garland"></div>
 <canvas id="snow"></canvas>
 <div class="tree l" id="treeL"></div><div class="tree r" id="treeR"></div>
-<button id="music" class="alt" aria-pressed="false">♪ Play carols</button>
+
 <header><h1>Secret Santa</h1><div class="kicker"><svg class="holly" viewBox="0 0 64 40" aria-hidden="true"><g transform="translate(32 22)"><path d="M0 0C-6 -14 -24 -16 -30 -6C-24 -2 -26 4 -20 6C-16 10 -8 8 0 0Z" fill="#2a7a56" stroke="#0f3a28"/><path d="M0 0C6 -14 24 -16 30 -6C24 -2 26 4 20 6C16 10 8 8 0 0Z" fill="#3f9a70" stroke="#0f3a28"/><path d="M-26 -5L-2 -1M26 -5L2 -1" stroke="#0f3a28" stroke-width="1" fill="none"/><circle cx="-3" cy="2" r="5" fill="#d92b3d"/><circle cx="4" cy="3" r="5" fill="#b3202f"/><circle cx="0" cy="8" r="5" fill="#d92b3d"/><circle cx="-4.5" cy="0.5" r="1.3" fill="#ffd0d6"/><circle cx="2.5" cy="1.5" r="1.3" fill="#ffd0d6"/></g></svg> &nbsp;merry &amp; bright&nbsp; <svg class="holly" style="transform:scaleX(-1)" viewBox="0 0 64 40" aria-hidden="true"><g transform="translate(32 22)"><path d="M0 0C-6 -14 -24 -16 -30 -6C-24 -2 -26 4 -20 6C-16 10 -8 8 0 0Z" fill="#2a7a56" stroke="#0f3a28"/><path d="M0 0C6 -14 24 -16 30 -6C24 -2 26 4 20 6C16 10 8 8 0 0Z" fill="#3f9a70" stroke="#0f3a28"/><path d="M-26 -5L-2 -1M26 -5L2 -1" stroke="#0f3a28" stroke-width="1" fill="none"/><circle cx="-3" cy="2" r="5" fill="#d92b3d"/><circle cx="4" cy="3" r="5" fill="#b3202f"/><circle cx="0" cy="8" r="5" fill="#d92b3d"/><circle cx="-4.5" cy="0.5" r="1.3" fill="#ffd0d6"/><circle cx="2.5" cy="1.5" r="1.3" fill="#ffd0d6"/></g></svg></div></header>
 <div id="app"></div>
 <script>
@@ -361,185 +363,42 @@ async function player() {
     })(0);
   }
 
-  // Music box carols (both tunes are public domain), synthesised so there are no audio files to host.
-  const N = { A3: 220, C4: 261.63, 'C#4': 277.18, D4: 293.66, E4: 329.63, F4: 349.23, 'F#4': 369.99, G4: 392, A4: 440, Bb4: 466.16, B4: 493.88, C5: 523.25, 'C#5': 554.37, D5: 587.33, E5: 659.25, 'F#5': 739.99, G5: 783.99 };
-  const CH = { B: 123.47, Bb: 116.54, C: 130.81, D: 146.83, E: 164.81, F: 174.61, 'F#': 185, G: 196, A: 220 }; // chord roots (bass register)
-  const ARP = [1, 1.2599, 1.4983, 1.2599], ARPM = [1, 1.1892, 1.4983, 1.1892]; // major / minor triad pattern
-  // Shared chord phrases: [root, beats, 'm' for minor]
-  const XT_A = [['D', 1], ['G', 2], ['D', 1], ['G', 3], ['A', 2, 'm'], ['D', 1], ['D', 1], ['G', 1]];
-  const FN_B = [[['D', 2], ['B', 1, 'm']], [['A', 3]], [['D', 2], ['G', 1]], [['D', 2], ['G', 1]], [['D', 2], ['G', 1]], [['D', 1], ['E', 1, 'm'], ['A', 1]], [['D', 2], ['A', 1]], [['D', 2], ['A', 1]]].flat();
-  const AM_A = [['G', 2], ['D', 1], ['G', 3], ['G', 2], ['E', 1, 'm'], ['A', 3, 'm'], ['D', 3], ['G', 3]];
-  // [title, melody 'note:beats' (R = rest), chords, seconds per beat]. Ten public-domain carols, played in a loop.
-  const TUNES = [
-    ['Jingle Bells', 'E4:1 E4:1 E4:2 E4:1 E4:1 E4:2 E4:1 G4:1 C4:1.5 D4:.5 E4:4 F4:1 F4:1 F4:1.5 F4:.5 F4:1 E4:1 E4:1 E4:.5 E4:.5 E4:1 D4:1 D4:1 E4:1 D4:2 G4:2',
-      [['C', 16], ['F', 4], ['C', 4], ['G', 8]], 0.36],
-    ['Deck the Halls', 'A4:1.5 G4:.5 F#4:1 E4:1 D4:1 E4:1 F#4:1 D4:1 E4:.5 F#4:.5 G4:.5 E4:.5 F#4:1.5 E4:.5 D4:1 C#4:1 D4:2 ' +
-      'A4:1.5 G4:.5 F#4:1 E4:1 D4:1 E4:1 F#4:1 D4:1 E4:.5 F#4:.5 G4:.5 E4:.5 F#4:1.5 E4:.5 D4:1 C#4:1 D4:2 ' +
-      'E4:1.5 F#4:.5 G4:1 E4:1 F#4:1.5 G4:.5 A4:1 E4:1 F#4:.5 G4:.5 A4:1 B4:.5 C#5:.5 D5:1 C#5:1 B4:1 A4:2 ' +
-      'A4:1.5 G4:.5 F#4:1 E4:1 D4:1 E4:1 F#4:1 D4:1 B4:.5 B4:.5 B4:.5 B4:.5 A4:1.5 G4:.5 F#4:1 E4:1 D4:2',
-      [['D', 8], ['A', 2], ['D', 6], ['D', 8], ['A', 2], ['D', 6], ['A', 4], ['D', 8], ['A', 4], ['D', 8], ['G', 2], ['D', 2], ['D', 1], ['A', 1], ['D', 2]], 0.34],
-    ['Silent Night', 'A4:.75 B4:.25 A4:.5 F#4:1.5 A4:.75 B4:.25 A4:.5 F#4:1.5 E5:1 E5:.5 C#5:1 C#5:.5 D5:1 D5:.5 A4:1 A4:.5 ' +
-      'B4:1 B4:.5 D5:.5 C#5:.5 B4:.5 A4:.75 B4:.25 A4:.5 F#4:1.5 B4:1 B4:.5 D5:.5 C#5:.5 B4:.5 A4:.75 B4:.25 A4:.5 F#4:1.5 ' +
-      'E5:1 E5:.5 G5:.5 E5:.5 C#5:.5 D5:1.5 F#5:1.5 D5:.5 A4:.5 F#4:.5 A4:.5 G4:.5 E4:.5 D4:.75 E4:.25 F#4:.5 A3:1 F#4:.5',
-      [['D', 6], ['A', 3], ['D', 3], ['G', 3], ['D', 3], ['G', 3], ['D', 3], ['A', 3], ['D', 9]], 0.7],
-    ['We Wish You a Merry Christmas', 'D4:1 G4:1 G4:.5 A4:.5 G4:.5 F#4:.5 E4:1 E4:1 E4:1 A4:1 A4:.5 B4:.5 A4:.5 G4:.5 F#4:1 D4:1 D4:1 B4:1 B4:.5 C5:.5 B4:.5 A4:.5 G4:1 E4:1 D4:.5 D4:.5 E4:1 A4:1 F#4:1 G4:3',
-      [['D', 1], ['G', 3], ['C', 3], ['D', 6], ['G', 3], ['C', 3], ['D', 3], ['G', 3]], 0.42],
-    ['Joy to the World', 'C5:1 B4:.75 A4:.25 G4:1.5 F4:.5 E4:1 D4:1 C4:1.5 G4:.5 A4:1.5 A4:.5 B4:1.5 B4:.5 C5:1.5 C5:.5 ' +
-      'C5:.5 B4:.5 A4:.5 G4:.5 G4:.75 F4:.25 E4:.5 C5:.5 C5:.5 B4:.5 A4:.5 G4:.5 G4:.75 F4:.25 E4:.5 E4:.5 ' +
-      'E4:.5 E4:.5 E4:.5 E4:.25 F4:.25 G4:1.5 F4:.25 E4:.25 D4:.5 D4:.5 D4:.5 D4:.25 E4:.25 F4:1.5 E4:.25 D4:.25 ' +
-      'C4:.5 C5:1 A4:.5 G4:.75 F4:.25 E4:.5 F4:.5 E4:1 D4:1 C4:2',
-      [['C', 2], ['G', 2], ['C', 4], ['F', 2], ['C', 2], ['G', 2], ['C', 2], ['G', 2], ['C', 4], ['C', 4], ['G', 4], ['F', 2], ['C', 2], ['G', 2], ['C', 2]], 0.4],
-    ['O Christmas Tree', 'D4:1 G4:.75 G4:.25 G4:1 A4:1 B4:.75 B4:.25 B4:1.5 B4:.5 A4:.5 B4:.5 C5:1 F#4:1 A4:1 G4:1 ' +
-      'D4:1 G4:.75 G4:.25 G4:1 A4:1 B4:.75 B4:.25 B4:1.5 B4:.5 A4:.5 B4:.5 C5:1 F#4:1 A4:1 G4:1 ' +
-      'R:.5 D5:.5 D5:.5 B4:.5 E5:1.5 D5:.5 D5:.5 C5:.5 C5:1.5 C5:.5 C5:.5 A4:.5 D5:1.5 C5:.5 C5:.5 B4:.5 B4:1 D4:1 ' +
-      'G4:.75 G4:.25 G4:1 A4:1 B4:.75 B4:.25 B4:1.5 B4:.5 A4:.5 B4:.5 C5:1 F#4:1 A4:1 G4:1',
-      [...XT_A, ...XT_A, ['G', 1], ['G', 1], ['C', 2], ['D', 3], ['D', 3], ['G', 2], ['D', 1], ['G', 2], ['D', 1], ['G', 3], ['A', 2, 'm'], ['D', 1], ['D', 1], ['G', 1]], 0.5],
-    ['The First Noel', 'F#4:.5 E4:.5 ' +
-      'D4:1.5 E4:.5 F#4:.5 G4:.5 A4:2 B4:.5 C#5:.5 D5:1 C#5:1 B4:1 A4:2 B4:.5 C#5:.5 D5:1 C#5:1 B4:1 A4:1 B4:1 C#5:1 D5:1 A4:1 G4:1 F#4:2 F#4:.5 E4:.5 ' +
-      'D4:1.5 E4:.5 F#4:.5 G4:.5 A4:2 B4:.5 C#5:.5 D5:1 C#5:1 B4:1 A4:2 B4:.5 C#5:.5 D5:1 C#5:1 B4:1 A4:1 B4:1 C#5:1 D5:1 A4:1 G4:1 F#4:2 F#4:.5 E4:.5 ' +
-      'D4:1.5 E4:.5 F#4:.5 G4:.5 A4:2 D5:.5 C#5:.5 B4:2 B4:1 A4:3 D5:1 C#5:1 B4:1 A4:1 B4:1 C#5:1 D5:1 A4:1 G4:1 F#4:3',
-      [['D', 1], ...FN_B, ...FN_B, ['D', 2], ['B', 1, 'm'], ['F#', 2, 'm'], ['B', 1, 'm'], ['G', 3], ['D', 3], ['B', 1, 'm'], ['F#', 1, 'm'], ['G', 1], ['D', 1], ['G', 1], ['A', 1], ['D', 2], ['A', 1], ['D', 3]], 0.46],
-    ['O Come, All Ye Faithful', 'F4:1 F4:2 C4:1 F4:1 G4:2 C4:2 A4:1 G4:1 A4:1 Bb4:1 A4:2 G4:1 F4:1 F4:2 E4:1 D4:1 E4:1 F4:1 G4:1 A4:1 E4:2 D4:1.5 C4:.5 C4:3 R:1 ' +
-      'C5:2 Bb4:1 A4:1 Bb4:2 A4:2 G4:1 A4:1 F4:1 G4:1 E4:1.5 D4:.5 C4:1 F4:1 F4:1 E4:1 F4:1 G4:1 F4:2 C4:1 A4:1 A4:1 G4:1 A4:1 Bb4:1 A4:2 G4:1 A4:1 ' +
-      'Bb4:1 A4:1 G4:1 F4:1 E4:2 F4:1 Bb4:1 A4:2 G4:1.5 F4:.5 F4:3',
-      [['F', 1], ['F', 4], ['C', 4], ['F', 3], ['Bb', 1], ['F', 2], ['C', 2], ['D', 3, 'm'], ['G', 1], ['C', 3], ['F', 1], ['C', 2], ['G', 2], ['C', 4],
-        ['F', 4], ['G', 2, 'm'], ['F', 2], ['C', 2], ['G', 2, 'm'], ['C', 4], ['F', 1], ['C', 1], ['F', 1], ['C', 1], ['F', 4], ['F', 1], ['C', 1], ['F', 1], ['C', 1],
-        ['F', 2], ['C', 1], ['F', 1], ['C', 1], ['F', 1], ['C', 1], ['F', 1], ['C', 2], ['F', 1], ['Bb', 1], ['F', 2], ['C', 2], ['F', 3]], 0.42],
-    ['Hark! The Herald Angels Sing', 'D4:1 G4:1 G4:1.5 F#4:.5 G4:1 B4:1 B4:1 A4:1 D5:1 D5:1 D5:1.5 C5:.5 B4:1 A4:1 B4:2 ' +
-      'D4:1 G4:1 G4:1.5 F#4:.5 G4:1 B4:1 B4:1 A4:1 D5:1 A4:1 A4:1.5 F#4:.5 F#4:1 E4:1 D4:2 ' +
-      'D5:1 D5:1 D5:1 G4:1 C5:1 B4:1 B4:1 A4:1 D5:1 D5:1 D5:1 G4:1 C5:1 B4:1 B4:1 A4:1 ' +
-      'E5:1 E5:1 E5:1 D5:1 C5:1 B4:1 C5:2 A4:1 B4:.5 C5:.5 D5:1.5 G4:.5 G4:1 A4:1 B4:2 ' +
-      'E5:1.5 E5:.5 E5:1 D5:1 C5:1 B4:1 C5:2 A4:1 B4:.5 C5:.5 D5:1.5 G4:.5 G4:1 A4:1 G4:2',
-      [['G', 2], ['D', 2], ['G', 4], ['G', 2], ['C', 2], ['D', 2], ['G', 2], ['G', 2], ['D', 2], ['G', 4], ['D', 4], ['D', 4], ['G', 4], ['C', 2], ['D', 2], ['G', 4], ['C', 2], ['D', 2],
-        ['C', 4], ['C', 4], ['D', 4], ['G', 4], ['C', 4], ['C', 4], ['D', 4], ['G', 4]], 0.38],
-    ['Away in a Manger', 'D4:1 G4:1 G4:1 A4:.5 B4:.5 G4:1 G4:1 B4:.5 C5:.5 D5:1 D5:1 E5:1 C5:2 A4:.5 B4:.5 C5:1 C5:1 D5:1 B4:1 B4:1 G4:.5 B4:.5 A4:1 E4:1 G4:1 F#4:2 D4:1 ' +
-      'G4:1 G4:1 A4:.5 B4:.5 G4:1 G4:1 B4:.5 C5:.5 D5:1 D5:1 E5:1 C5:2 A4:.5 B4:.5 C5:1 C5:1 D5:1 B4:1 B4:1 G4:.5 B4:.5 A4:1 E4:1 F#4:1 G4:2',
-      [['D', 1], ...AM_A, ['A', 3], ['D', 3], ['G', 2], ['D', 1], ['G', 3], ['G', 2], ['E', 1, 'm'], ['A', 3, 'm'], ['D', 3], ['G', 3], ['A', 2, 'm'], ['D', 1], ['G', 2]], 0.5],
-  ];
-  let ctx, bus, timer, i = 0;
-
-  // Warm room: dry signal plus a soft synthetic reverb, through a gentle compressor.
-  const mkBus = () => {
-    const len = ctx.sampleRate * 2.6, ir = ctx.createBuffer(2, len, ctx.sampleRate);
-    for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let k = 0; k < len; k++) d[k] = (Math.random() * 2 - 1) * Math.pow(1 - k / len, 2.8); }
-    const conv = ctx.createConvolver(), dry = ctx.createGain(), wet = ctx.createGain(), comp = ctx.createDynamicsCompressor();
-    conv.buffer = ir; dry.gain.value = 0.85; wet.gain.value = 0.38;
-    const b = ctx.createGain(); b.gain.value = 0.9;
-    b.connect(dry); b.connect(conv); conv.connect(wet); dry.connect(comp); wet.connect(comp); comp.connect(ctx.destination);
-    return b;
-  };
-  // Celtic arrangement: plucked harp, tin whistle (octave up, with vibrato and small "cuts"), and a low drone.
-  const KEYS = ['C', 'D', 'D', 'G', 'C', 'G', 'D', 'F', 'G', 'G']; // tonic of each tune, for the drone
-  const HARP = [[1, 1, 2.2], [2, 0.42, 1.5], [3, 0.2, 0.9], [4, 0.09, 0.5], [6, 0.04, 0.25]]; // [ratio, level, decay seconds]
-  const pluck = (fr, t, d, gain, ring = 1) => HARP.forEach(([m, lv, dec]) => {
-    const o = ctx.createOscillator(), v = ctx.createGain(), len = dec * ring * (0.8 + Math.min(d, 2) * 0.35);
-    o.type = m === 1 ? 'triangle' : 'sine'; o.frequency.value = fr * m;
-    v.gain.setValueAtTime(0.0001, t); v.gain.linearRampToValueAtTime(gain * lv, t + 0.003); v.gain.exponentialRampToValueAtTime(0.0001, t + len);
-    o.connect(v).connect(bus); o.start(t); o.stop(t + len + 0.1);
-  });
-  const whistle = (fr, t, d, gain) => {
-    const len = Math.max(d * 0.96, 0.16), f = fr * 2;
-    const o = ctx.createOscillator(), o2 = ctx.createOscillator(), g2 = ctx.createGain(), v = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain();
-    o.frequency.value = f; o2.frequency.value = f * 2; g2.gain.value = 0.12;
-    lfo.frequency.value = 5.2; lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(f * 0.006, t + Math.min(0.35, len));
-    v.gain.setValueAtTime(0.0001, t); v.gain.linearRampToValueAtTime(gain, t + 0.04); v.gain.setValueAtTime(gain, t + len - 0.04); v.gain.linearRampToValueAtTime(0.0001, t + len + 0.05);
-    lfo.connect(lg).connect(o.frequency); o.connect(v); o2.connect(g2).connect(v); v.connect(bus);
-    [o, o2, lfo].forEach((x) => { x.start(t); x.stop(t + len + 0.1); });
-  };
-  const drone = (root, t, len, gain) => [root, root * 1.5].forEach((f) => {
-    const o = ctx.createOscillator(), v = ctx.createGain();
-    o.type = 'triangle'; o.frequency.value = f;
-    v.gain.setValueAtTime(0.0001, t); v.gain.linearRampToValueAtTime(gain, t + 1.2); v.gain.setValueAtTime(gain, t + len - 1.2); v.gain.linearRampToValueAtTime(0.0001, t + len);
-    o.connect(v).connect(bus); o.start(t); o.stop(t + len + 0.1);
-  });
-  // Each carol plays through at least ~50 seconds, changing voice every pass: harp, whistle, then both.
-  // One pass is scheduled at a time (a few seconds before the last ends) so phones never get a huge burst.
-  let cur = null, tuneEnd = 0;
-  const next = () => {
-    if (!cur || cur.p >= cur.passes) {
-      const idx = i++ % TUNES.length, [title, melody, chords, spb] = TUNES[idx];
-      const notes = melody.split(' ').filter(Boolean).map((s) => { const [n, b] = s.split(':'); return [n, +b]; });
-      const dur = notes.reduce((s, [, b]) => s + b, 0) * spb;
-      cur = { title, notes, chords, spb, dur, key: CH[KEYS[idx]], p: 0, passes: Math.max(2, Math.ceil(50 / dur)), t: Math.max(ctx.currentTime + 0.3, tuneEnd + 2.5) };
-    }
-    const { notes, chords, spb, dur, key, p } = cur, t0 = cur.t;
-    const mode = p % 3; // 0 harp, 1 whistle over soft harp, 2 harp and whistle together
-    let u = t0;
-    for (const [n, b] of notes) {
-      if (n !== 'R') {
-        const f = N[n], at = u + (Math.random() - 0.5) * 0.012;
-        pluck(f, at, b * spb, mode === 0 ? 0.5 : mode === 2 ? 0.4 : 0.15);
-        if (mode > 0) {
-          if (b >= 1) whistle(f * 1.1225, at - 0.07, 0.06, 0.1); // quick grace-note "cut"
-          whistle(f, at, b * spb, mode === 1 ? 0.2 : 0.14);
-        }
-      }
-      u += b * spb;
-    }
-    const sub = p % 2 ? 2 : 1; // later verses roll the harp in eighth notes
-    let c = t0;
-    for (const [r, beats, minor] of chords) {
-      const pat = minor ? ARPM : ARP;
-      pluck(CH[r], c, beats * spb, 0.5, 2.2);
-      for (let k = 1; k < beats; k += 1 / sub) pluck(CH[r] * 2 * pat[Math.round(k * sub) % 4], c + k * spb, spb / sub, sub === 2 ? 0.1 : 0.15);
-      c += beats * spb;
-    }
-    if (p > 0) drone(key, t0, dur, 0.05);
-    if (p === 0) btn.textContent = '🔊 ' + cur.title + ' (tap to mute)';
-    cur.t += dur; cur.p++; tuneEnd = cur.t;
-    timer = setTimeout(next, Math.max(0, cur.t - ctx.currentTime - 3) * 1000);
-  };
-  const btn = document.getElementById('music');
-  // Autoplay: on by default. Browsers only allow sound after a first tap/key, so if it is blocked
-  // we wait for the first interaction anywhere on the page. Muting is remembered across pages.
-  let started = false, startedAt = 0;
-  const begin = () => {
-    if (!ctx || started) return;
-    ctx.resume().then(() => { if (ctx && ctx.state === 'running' && !started) { started = true; startedAt = Date.now(); next(); } });
-  };
-  const gestures = ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click', 'touchstart', 'touchend', 'keydown'];
-  const onGesture = () => { if (ctx) begin(); };
-  const play = () => {
-    ctx = new AudioContext(); bus = mkBus(); cur = null; tuneEnd = 0; started = false; begin();
-    if (!started) { btn.textContent = '♪ Tap anywhere for carols'; gestures.forEach((g) => document.addEventListener(g, onGesture, { once: true })); }
-  };
-  const mute = () => {
-    clearTimeout(timer); if (ctx) ctx.close(); ctx = null; started = false;
-    gestures.forEach((g) => document.removeEventListener(g, onGesture));
-    btn.textContent = '🔇 Carols off';
-  };
-  window.muteCarols = () => { if (ctx) mute(); };
-  // A tap that just started the music (even if it landed on this button) must not also mute it.
-  btn.onclick = (e) => { e.stopPropagation(); if (Date.now() - startedAt < 800) return; ctx ? mute() : play(); };
-  try { play(); } catch { btn.textContent = '🔇 Music unavailable'; } // always start; if the browser blocks sound, the first tap/key anywhere starts it
 })();
 </script>
 <script>
-/* Real recordings through the official Spotify player (licensed by Spotify; nothing is hosted here). */
+/* Christmas music: Boney M. and Michael Bublé playlists through the YouTube player (licensed by YouTube; nothing is hosted here). */
 (() => {
-  const ALBUMS = { bm: ['Boney M. Christmas', '7yiVHohfL3mSUScmgubttV'], mb: ['Michael Bublé Christmas', '3CKVXhODttZebJAzjUs2un'] };
-  document.body.insertAdjacentHTML('beforeend', `<button id="more" class="alt">🎶 Boney M. &amp; Bublé</button>
-    <div id="tunes" hidden>
-      <div class="thead"><button class="alt" data-album="bm">Boney M.</button><button class="alt" data-album="mb">Bublé</button><span class="tsp"></span>
-        <button class="alt" id="ttracks" title="Show the track list">☰</button><button class="alt" id="tmin" title="Minimise">–</button><button class="alt" id="tclose" title="Close">×</button></div>
-      <div id="tbody"><div id="tplayer"></div><p class="muted">Plays through Spotify. Log in to Spotify for full songs, otherwise 30-second previews. <a id="tlink" target="_blank" rel="noopener" href="#">Open in Spotify</a></p></div>
+  const LISTS = { bm: ['Boney M.', 'PLKtm2G15Yd1CfNtlpLfbcRACx0JY0ddRc'], mb: ['Michael Bublé', 'PLSn3M9lSKvoYyFuwUk9TkA-uyKYML7POl'] };
+  document.body.insertAdjacentHTML('beforeend', `<button id="more" class="alt" hidden>🎶 Christmas music</button>
+    <div id="tunes">
+      <div class="thead"><button class="alt on" data-k="bm">Boney M.</button><button class="alt" data-k="mb">Bublé</button><span class="tsp" id="tstat"></span>
+        <button class="alt" id="tmute" title="Pause or play">⏸</button><button class="alt" id="tmin" title="Minimise">–</button><button class="alt" id="tclose" title="Close">×</button></div>
+      <div id="tbody"><div id="ytp"></div></div>
     </div>`);
-  const box = document.getElementById('tunes'), player = document.getElementById('tplayer'), minBtn = document.getElementById('tmin');
-  const close = () => { box.hidden = true; box.classList.remove('min'); minBtn.textContent = '–'; player.innerHTML = ''; };
-  const show = (k) => {
-    const [name, id] = ALBUMS[k], h = player.querySelector('iframe')?.height || '152'; // small player by default
-    if (window.muteCarols) window.muteCarols(); // don't play two things at once
-    player.innerHTML = `<iframe title="${name}" src="https://open.spotify.com/embed/album/${id}" width="100%" height="${h}" frameborder="0" allow="encrypted-media" loading="lazy" style="border-radius:12px"></iframe>`;
-    document.getElementById('tlink').href = `https://open.spotify.com/album/${id}`;
-    box.hidden = false;
+  const box = document.getElementById('tunes'), more = document.getElementById('more'), stat = document.getElementById('tstat'), muteBtn = document.getElementById('tmute'), minBtn = document.getElementById('tmin');
+  let yt, cur = 'bm', paused = false;
+  const tabs = (k) => box.querySelectorAll('[data-k]').forEach((b) => b.classList.toggle('on', b.dataset.k === k));
+  const load = (k) => { cur = k; tabs(k); paused = false; muteBtn.textContent = '⏸'; yt.loadPlaylist({ listType: 'playlist', list: LISTS[k][1] }); yt.setShuffle(true); };
+  window.onYouTubeIframeAPIReady = () => {
+    yt = new YT.Player('ytp', { width: '100%', height: '169', playerVars: { listType: 'playlist', list: LISTS.bm[1], autoplay: 1, rel: 0, playsinline: 1 }, events: {
+      onReady: (e) => { e.target.setShuffle(true); e.target.playVideo(); setTimeout(() => { if (e.target.getPlayerState() !== 1) stat.textContent = 'Tap anywhere to start'; }, 1500); },
+      onAutoplayBlocked: () => { stat.textContent = 'Tap anywhere to start'; },
+      onStateChange: (e) => {
+        if (e.data === 1) stat.textContent = '';
+        if (e.data === 0) { const l = yt.getPlaylist() || []; if (yt.getPlaylistIndex() >= l.length - 1) load(cur === 'bm' ? 'mb' : 'bm'); } // playlist finished: play the other artist
+      } } });
   };
-  document.getElementById('more').onclick = () => (box.hidden ? show('bm') : close());
+  // Browsers block sound until the first tap or key press: start the music then, but never override a pause the person chose.
+  ['pointerdown', 'keydown', 'touchend', 'click'].forEach((g) => document.addEventListener(g, () => { if (yt && yt.getPlayerState && !paused && [-1, 5].includes(yt.getPlayerState())) yt.playVideo(); }, true));
   box.onclick = (e) => {
-    const k = e.target.dataset.album; if (k) { show(k); box.classList.remove('min'); minBtn.textContent = '–'; }
-    if (e.target.id === 'tclose') close();
-    if (e.target.id === 'tmin') { box.classList.toggle('min'); minBtn.textContent = box.classList.contains('min') ? '▴' : '–'; minBtn.title = box.classList.contains('min') ? 'Expand' : 'Minimise'; } // the music keeps playing
-    if (e.target.id === 'ttracks') { const f = player.querySelector('iframe'); if (f) f.height = f.height === '152' ? '352' : '152'; box.classList.remove('min'); minBtn.textContent = '–'; }
+    const t = e.target;
+    if (t.dataset.k) { load(t.dataset.k); box.classList.remove('min'); minBtn.textContent = '–'; }
+    if (t.id === 'tmute') { paused ? (yt.playVideo(), paused = false, t.textContent = '⏸') : (yt.pauseVideo(), paused = true, t.textContent = '▶'); }
+    if (t.id === 'tmin') { box.classList.toggle('min'); const m = box.classList.contains('min'); t.textContent = m ? '▴' : '–'; t.title = m ? 'Expand' : 'Minimise'; } // music keeps playing
+    if (t.id === 'tclose') { yt.pauseVideo(); paused = true; box.hidden = true; more.hidden = false; }
   };
+  more.onclick = () => { box.hidden = false; more.hidden = true; paused = false; muteBtn.textContent = '⏸'; yt.playVideo(); };
+  const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(s);
 })();
 </script>
 </body>
