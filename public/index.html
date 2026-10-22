@@ -52,7 +52,13 @@
   .nohint{color:#b45f06;font-weight:700;font-size:1.05rem;margin:.3rem 0}
   .total{font-size:1.25rem}
   input.need{border:2px solid var(--red);box-shadow:0 0 0 4px rgba(207,44,62,.25)}  #more{position:fixed;top:12px;left:12px;z-index:10;border-radius:999px;font-size:.9rem}
-  #tunes{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);width:min(440px,94vw);background:var(--cream);color:#2a2622;border:2px solid var(--gold);border-radius:14px;padding:.7rem;z-index:11;box-shadow:0 6px 24px #0007}
+  #tunes{position:fixed;bottom:12px;right:12px;width:min(340px,94vw);background:var(--cream);color:#2a2622;border:2px solid var(--gold);border-radius:14px;padding:.5rem;z-index:11;box-shadow:0 6px 24px #0007}
+  #tunes .thead{display:flex;gap:.3rem;align-items:center;flex-wrap:wrap} #tunes .tsp{flex:1}
+  #tunes button{padding:.25rem .65rem;font-size:.82rem;margin:0;box-shadow:none}
+  #tunes.min #tbody{height:0;overflow:hidden}
+  #tunes p{font-size:.78rem;margin:.4rem 0 0}
+  button.del{background:transparent;color:#ffb3ba;border:1px solid rgba(255,179,186,.45);padding:.1rem .6rem;font-size:.78rem;box-shadow:none;margin-left:.5rem;border-radius:999px;opacity:.85}
+  button.del:hover{background:rgba(179,32,47,.45);color:#fff;opacity:1}
   #tunes[hidden]{display:none}
   #tunes .muted{color:#666} #tunes a{color:var(--deep)}
   /* decorations */
@@ -128,7 +134,7 @@ async function deleteGame(name, hostToken) {
 function home() {
   const games = JSON.parse(localStorage.games || '[]');
   let names = [], couples = [], sel = [];
-  app.innerHTML = `${games.length ? `<h2>Your games</h2>${games.map((g) => `<p><a href="/h/${esc(g.host)}">${esc(g.title)}</a> <button class="alt" data-del="${esc(g.host)}" data-title="${esc(g.title)}">Delete</button></p>`).join('')}<h2>Start a new game</h2>` : ''}
+  app.innerHTML = `${games.length ? `<h2>Your games</h2>${games.map((g) => `<p><a href="/h/${esc(g.host)}">${esc(g.title)}</a> <button class="del" data-del="${esc(g.host)}" data-title="${esc(g.title)}">Delete</button></p>`).join('')}<h2>Start a new game</h2>` : ''}
     <p>Group name (for example "Sarah's family"):</p>
     <input class="wide" id="title" placeholder="Sarah's family">
     <p>You're the host. Who's taking part? Type a name and press Enter.</p>
@@ -191,7 +197,7 @@ async function host() {
     <h2>Start over</h2>
     <button class="alt" id="redraw">Redraw everyone</button> <span class="muted">New draw, everyone spins again. Wish lists are kept.</span>
     <h2>Delete this game</h2>
-    <button class="alt" id="delgame">Delete this game</button> <span class="muted">Removes it for everyone, for good.</span>`;
+    <button class="del" id="delgame" style="margin-left:0">Delete this game</button> <span class="muted">Removes it for everyone, for good.</span>`;
   const act = async (a, data) => { try { await api(a, { t: token, ...data }); host(); } catch (x) { $('#err').textContent = x.message; } };
   $('#addp').onclick = () => act('add', { name: $('#newname').value, partners: [...document.querySelectorAll('#partnerP .sel')].map((x) => x.dataset.partner) });
   $('#delgame').onclick = () => deleteGame(title, token);
@@ -513,19 +519,27 @@ async function player() {
 (() => {
   const ALBUMS = { bm: ['Boney M. Christmas', '7yiVHohfL3mSUScmgubttV'], mb: ['Michael Bublé Christmas', '3CKVXhODttZebJAzjUs2un'] };
   document.body.insertAdjacentHTML('beforeend', `<button id="more" class="alt">🎶 Boney M. &amp; Bublé</button>
-    <div id="tunes" hidden><div><button class="alt" data-album="bm">Boney M.</button> <button class="alt" data-album="mb">Michael Bublé</button> <button class="alt" id="tclose" aria-label="Close">×</button></div>
-      <div id="tplayer"></div><p class="muted">Plays through Spotify. Log in to Spotify to hear the full songs, otherwise you get 30-second previews. <a id="tlink" target="_blank" rel="noopener" href="#">Open in Spotify</a></p></div>`);
-  const box = document.getElementById('tunes'), player = document.getElementById('tplayer');
-  const close = () => { box.hidden = true; player.innerHTML = ''; };
+    <div id="tunes" hidden>
+      <div class="thead"><button class="alt" data-album="bm">Boney M.</button><button class="alt" data-album="mb">Bublé</button><span class="tsp"></span>
+        <button class="alt" id="ttracks" title="Show the track list">☰</button><button class="alt" id="tmin" title="Minimise">–</button><button class="alt" id="tclose" title="Close">×</button></div>
+      <div id="tbody"><div id="tplayer"></div><p class="muted">Plays through Spotify. Log in to Spotify for full songs, otherwise 30-second previews. <a id="tlink" target="_blank" rel="noopener" href="#">Open in Spotify</a></p></div>
+    </div>`);
+  const box = document.getElementById('tunes'), player = document.getElementById('tplayer'), minBtn = document.getElementById('tmin');
+  const close = () => { box.hidden = true; box.classList.remove('min'); minBtn.textContent = '–'; player.innerHTML = ''; };
   const show = (k) => {
-    const [name, id] = ALBUMS[k];
+    const [name, id] = ALBUMS[k], h = player.querySelector('iframe')?.height || '152'; // small player by default
     if (window.muteCarols) window.muteCarols(); // don't play two things at once
-    player.innerHTML = `<iframe title="${name}" src="https://open.spotify.com/embed/album/${id}" width="100%" height="352" frameborder="0" allow="encrypted-media" loading="lazy" style="border-radius:12px"></iframe>`;
+    player.innerHTML = `<iframe title="${name}" src="https://open.spotify.com/embed/album/${id}" width="100%" height="${h}" frameborder="0" allow="encrypted-media" loading="lazy" style="border-radius:12px"></iframe>`;
     document.getElementById('tlink').href = `https://open.spotify.com/album/${id}`;
     box.hidden = false;
   };
   document.getElementById('more').onclick = () => (box.hidden ? show('bm') : close());
-  box.onclick = (e) => { const k = e.target.dataset.album; if (k) show(k); if (e.target.id === 'tclose') close(); };
+  box.onclick = (e) => {
+    const k = e.target.dataset.album; if (k) { show(k); box.classList.remove('min'); minBtn.textContent = '–'; }
+    if (e.target.id === 'tclose') close();
+    if (e.target.id === 'tmin') { box.classList.toggle('min'); minBtn.textContent = box.classList.contains('min') ? '▴' : '–'; minBtn.title = box.classList.contains('min') ? 'Expand' : 'Minimise'; } // the music keeps playing
+    if (e.target.id === 'ttracks') { const f = player.querySelector('iframe'); if (f) f.height = f.height === '152' ? '352' : '152'; box.classList.remove('min'); minBtn.textContent = '–'; }
+  };
 })();
 </script>
 </body>
