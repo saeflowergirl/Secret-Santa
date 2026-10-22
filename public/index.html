@@ -378,21 +378,28 @@ async function player() {
   const box = document.getElementById('tunes'), more = document.getElementById('more'), stat = document.getElementById('tstat'), muteBtn = document.getElementById('tmute'), minBtn = document.getElementById('tmin');
   let yt, cur = 'bm', paused = false;
   const tabs = (k) => box.querySelectorAll('[data-k]').forEach((b) => b.classList.toggle('on', b.dataset.k === k));
-  const load = (k) => { cur = k; tabs(k); paused = false; muteBtn.textContent = '⏸'; const src = LISTS[k][1]; yt.loadPlaylist(Array.isArray(src) ? src : { listType: 'playlist', list: src }); yt.setShuffle(true); };
-  window.onYouTubeIframeAPIReady = () => {
-    yt = new YT.Player('ytp', { width: '100%', height: '169', playerVars: { listType: 'playlist', list: LISTS.bm[1], autoplay: 1, rel: 0, playsinline: 1 }, events: {
-      onReady: (e) => { e.target.setShuffle(true); e.target.playVideo(); setTimeout(() => { if (e.target.getPlayerState() !== 1) stat.textContent = 'Tap anywhere to start'; }, 1500); },
+  const shuffled = (a) => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  // YouTube ignores "load another playlist" on a running player, so each artist gets a fresh player.
+  const make = (k) => {
+    if (!window.YT || !YT.Player) return; // the YouTube script has not loaded yet
+    cur = k; tabs(k); paused = false; muteBtn.textContent = '⏸'; stat.textContent = '';
+    if (yt && yt.destroy) yt.destroy();
+    document.getElementById('tbody').innerHTML = '<div id="ytp"></div>';
+    const src = LISTS[k][1], list = Array.isArray(src) ? { playlist: shuffled(src).join(',') } : { listType: 'playlist', list: src };
+    yt = new YT.Player('ytp', { width: '100%', height: '169', playerVars: { ...list, autoplay: 1, rel: 0, playsinline: 1 }, events: {
+      onReady: (e) => { if (!Array.isArray(src)) e.target.setShuffle(true); e.target.playVideo(); setTimeout(() => { if (e.target.getPlayerState() !== 1 && !paused) stat.textContent = 'Tap anywhere to start'; }, 1500); },
       onAutoplayBlocked: () => { stat.textContent = 'Tap anywhere to start'; },
       onStateChange: (e) => {
         if (e.data === 1) stat.textContent = '';
-        if (e.data === 0) { const l = yt.getPlaylist() || []; if (yt.getPlaylistIndex() >= l.length - 1) load(cur === 'bm' ? 'mb' : 'bm'); } // playlist finished: play the other artist
+        if (e.data === 0) { const l = yt.getPlaylist() || []; if (yt.getPlaylistIndex() >= l.length - 1) make(cur === 'bm' ? 'mb' : 'bm'); } // list finished: play the other artist
       } } });
   };
+  window.onYouTubeIframeAPIReady = () => make('bm');
   // Browsers block sound until the first tap or key press: start the music then, but never override a pause the person chose.
   ['pointerdown', 'keydown', 'touchend', 'click'].forEach((g) => document.addEventListener(g, () => { if (yt && yt.getPlayerState && !paused && [-1, 5].includes(yt.getPlayerState())) yt.playVideo(); }, true));
   box.onclick = (e) => {
     const t = e.target;
-    if (t.dataset.k) { load(t.dataset.k); box.classList.remove('min'); minBtn.textContent = '–'; }
+    if (t.dataset.k) { make(t.dataset.k); box.classList.remove('min'); minBtn.textContent = '–'; }
     if (t.id === 'tmute') { paused ? (yt.playVideo(), paused = false, t.textContent = '⏸') : (yt.pauseVideo(), paused = true, t.textContent = '▶'); }
     if (t.id === 'tmin') { box.classList.toggle('min'); const m = box.classList.contains('min'); t.textContent = m ? '▴' : '–'; t.title = m ? 'Expand' : 'Minimise'; } // music keeps playing
     if (t.id === 'tclose') { yt.pauseVideo(); paused = true; box.hidden = true; more.hidden = false; }
