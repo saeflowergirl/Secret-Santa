@@ -345,32 +345,66 @@ async function player() {
     b.connect(dry); b.connect(conv); conv.connect(wet); dry.connect(comp); wet.connect(comp); comp.connect(ctx.destination);
     return b;
   };
-  // Celesta/music-box bell: a bright strike plus softer overtones that ring and fade.
-  const PARTIALS = [[1, 1, 1.5], [2, 0.34, 1.0], [3, 0.14, 0.6], [5.4, 0.06, 0.2]]; // [ratio, level, decay seconds]
-  const bell = (fr, t, d, gain, ring = 1) => PARTIALS.forEach(([m, lv, dec]) => {
-    const o = ctx.createOscillator(), v = ctx.createGain(), len = dec * ring * (0.8 + Math.min(d, 2) * 0.45);
-    o.frequency.value = fr * m;
-    v.gain.setValueAtTime(0.0001, t); v.gain.linearRampToValueAtTime(gain * lv, t + 0.005); v.gain.exponentialRampToValueAtTime(0.0001, t + len);
+  // Celtic arrangement: plucked harp, tin whistle (octave up, with vibrato and small "cuts"), and a low drone.
+  const KEYS = ['C', 'D', 'D', 'G', 'C', 'G', 'D', 'F', 'G', 'G']; // tonic of each tune, for the drone
+  const HARP = [[1, 1, 2.2], [2, 0.42, 1.5], [3, 0.2, 0.9], [4, 0.09, 0.5], [6, 0.04, 0.25]]; // [ratio, level, decay seconds]
+  const pluck = (fr, t, d, gain, ring = 1) => HARP.forEach(([m, lv, dec]) => {
+    const o = ctx.createOscillator(), v = ctx.createGain(), len = dec * ring * (0.8 + Math.min(d, 2) * 0.35);
+    o.type = m === 1 ? 'triangle' : 'sine'; o.frequency.value = fr * m;
+    v.gain.setValueAtTime(0.0001, t); v.gain.linearRampToValueAtTime(gain * lv, t + 0.003); v.gain.exponentialRampToValueAtTime(0.0001, t + len);
     o.connect(v).connect(bus); o.start(t); o.stop(t + len + 0.1);
   });
+  const whistle = (fr, t, d, gain) => {
+    const len = Math.max(d * 0.96, 0.16), f = fr * 2;
+    const o = ctx.createOscillator(), o2 = ctx.createOscillator(), g2 = ctx.createGain(), v = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain();
+    o.frequency.value = f; o2.frequency.value = f * 2; g2.gain.value = 0.12;
+    lfo.frequency.value = 5.2; lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(f * 0.006, t + Math.min(0.35, len));
+    v.gain.setValueAtTime(0.0001, t); v.gain.linearRampToValueAtTime(gain, t + 0.04); v.gain.setValueAtTime(gain, t + len - 0.04); v.gain.linearRampToValueAtTime(0.0001, t + len + 0.05);
+    lfo.connect(lg).connect(o.frequency); o.connect(v); o2.connect(g2).connect(v); v.connect(bus);
+    [o, o2, lfo].forEach((x) => { x.start(t); x.stop(t + len + 0.1); });
+  };
+  const drone = (root, t, len, gain) => [root, root * 1.5].forEach((f) => {
+    const o = ctx.createOscillator(), v = ctx.createGain();
+    o.type = 'triangle'; o.frequency.value = f;
+    v.gain.setValueAtTime(0.0001, t); v.gain.linearRampToValueAtTime(gain, t + 1.2); v.gain.setValueAtTime(gain, t + len - 1.2); v.gain.linearRampToValueAtTime(0.0001, t + len);
+    o.connect(v).connect(bus); o.start(t); o.stop(t + len + 0.1);
+  });
+  // Each carol plays through at least ~50 seconds, changing voice every pass: harp, whistle, then both.
+  // One pass is scheduled at a time (a few seconds before the last ends) so phones never get a huge burst.
+  let cur = null, tuneEnd = 0;
   const next = () => {
-    const [title, melody, chords, spb] = TUNES[i++ % TUNES.length];
-    const t0 = ctx.currentTime + 0.3;
-    let t = t0;
-    for (const s of melody.split(' ').filter(Boolean)) {
-      const [n, b] = s.split(':');
-      if (n !== 'R') bell(N[n], t + (Math.random() - 0.5) * 0.012, b * spb, 0.5);
-      t += b * spb;
+    if (!cur || cur.p >= cur.passes) {
+      const idx = i++ % TUNES.length, [title, melody, chords, spb] = TUNES[idx];
+      const notes = melody.split(' ').filter(Boolean).map((s) => { const [n, b] = s.split(':'); return [n, +b]; });
+      const dur = notes.reduce((s, [, b]) => s + b, 0) * spb;
+      cur = { title, notes, chords, spb, dur, key: CH[KEYS[idx]], p: 0, passes: Math.max(2, Math.ceil(50 / dur)), t: Math.max(ctx.currentTime + 0.3, tuneEnd + 2.5) };
     }
+    const { notes, chords, spb, dur, key, p } = cur, t0 = cur.t;
+    const mode = p % 3; // 0 harp, 1 whistle over soft harp, 2 harp and whistle together
+    let u = t0;
+    for (const [n, b] of notes) {
+      if (n !== 'R') {
+        const f = N[n], at = u + (Math.random() - 0.5) * 0.012;
+        pluck(f, at, b * spb, mode === 0 ? 0.5 : mode === 2 ? 0.4 : 0.15);
+        if (mode > 0) {
+          if (b >= 1) whistle(f * 1.1225, at - 0.07, 0.06, 0.1); // quick grace-note "cut"
+          whistle(f, at, b * spb, mode === 1 ? 0.2 : 0.14);
+        }
+      }
+      u += b * spb;
+    }
+    const sub = p % 2 ? 2 : 1; // later verses roll the harp in eighth notes
     let c = t0;
     for (const [r, beats, minor] of chords) {
-      const pattern = minor ? ARPM : ARP;
-      bell(CH[r], c, beats * spb, 0.5, 2.2); // bass, rings long
-      for (let k = 1; k < beats; k++) bell(CH[r] * 2 * pattern[k % 4], c + k * spb, spb, 0.16); // soft rolling chord
+      const pat = minor ? ARPM : ARP;
+      pluck(CH[r], c, beats * spb, 0.5, 2.2);
+      for (let k = 1; k < beats; k += 1 / sub) pluck(CH[r] * 2 * pat[Math.round(k * sub) % 4], c + k * spb, spb / sub, sub === 2 ? 0.1 : 0.15);
       c += beats * spb;
     }
-    btn.textContent = '🔊 ' + title + ' (tap to mute)';
-    timer = setTimeout(next, (t - ctx.currentTime + 2.5) * 1000);
+    if (p > 0) drone(key, t0, dur, 0.05);
+    if (p === 0) btn.textContent = '🔊 ' + cur.title + ' (tap to mute)';
+    cur.t += dur; cur.p++; tuneEnd = cur.t;
+    timer = setTimeout(next, Math.max(0, cur.t - ctx.currentTime - 3) * 1000);
   };
   const btn = document.getElementById('music');
   // Autoplay: on by default. Browsers only allow sound after a first tap/key, so if it is blocked
@@ -383,7 +417,7 @@ async function player() {
   const gestures = ['pointerdown', 'keydown', 'touchstart'];
   const onGesture = () => { if (ctx) begin(); };
   const play = () => {
-    ctx = new AudioContext(); bus = mkBus(); started = false; begin();
+    ctx = new AudioContext(); bus = mkBus(); cur = null; tuneEnd = 0; started = false; begin();
     if (!started) { btn.textContent = '♪ Tap anywhere for carols'; gestures.forEach((g) => document.addEventListener(g, onGesture, { once: true })); }
     try { localStorage.music = 'on'; } catch {}
   };
