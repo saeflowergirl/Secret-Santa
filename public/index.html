@@ -4,24 +4,60 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Secret Santa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
-  body{font:17px system-ui,sans-serif;max-width:640px;margin:1.5rem auto;padding:0 1rem;background:#fff5f5;color:#222}
-  h1{color:#c0392b;margin-bottom:.2rem} h2{margin-top:1.6rem}
-  textarea,input,button{font:inherit;box-sizing:border-box;padding:.55rem;margin:.3rem 0;border-radius:8px;border:1px solid #c0392b}
+  :root{--red:#b3202f;--deep:#8a1424;--green:#14573a;--gold:#e3bd6a;--cream:#fffaf0}
+  *{box-sizing:border-box}
+  html{overflow-x:hidden}
+  body{font:17px system-ui,sans-serif;max-width:660px;margin:0 auto;padding:0 1rem 150px;color:#f6efe0;min-height:100vh;
+    background:radial-gradient(ellipse at 50% -10%,#2a8a5c 0%,#14573a 38%,#0b3a27 70%,#06241a 100%) fixed}
+  #app{position:relative;z-index:2}
+  h1,h2,h3{font-family:'Cormorant Garamond',Georgia,serif;font-weight:700}
+  header{text-align:center;margin:7.2rem 0 1.4rem;position:relative;z-index:2}
+  h1{font-size:3.8rem;line-height:1;margin:0;color:#fff8e6;text-shadow:0 2px 0 #7a1522,0 0 24px rgba(255,210,122,.5)}
+  .kicker{color:var(--gold);letter-spacing:.35em;font-size:.75rem;text-transform:uppercase;margin-top:.7rem}
+  .holly{display:inline-block;width:64px;vertical-align:middle;margin:0 .2rem}
+  h2{font-size:1.8rem;color:#ffe9b0;border-bottom:1px solid var(--gold);padding-bottom:.2rem;margin-top:1.8rem}
+  p{line-height:1.45}
+  a{color:#ffd98a}
+  textarea,input,select,button{font:inherit;padding:.6rem;margin:.3rem 0;border-radius:10px;border:1px solid var(--gold)}
+  textarea,input,select{background:var(--cream);color:#2a2622}
   textarea,input.wide{width:100%}
-  button,a.btn{background:#c0392b;color:#fff;cursor:pointer;text-decoration:none;display:inline-block;padding:.55rem .8rem;border-radius:8px;border:0}
-  button.alt,a.alt{background:#fff;color:#c0392b;border:1px solid #c0392b}
-  .card{display:flex;gap:.8rem;background:#fff;border-radius:10px;padding:.7rem;margin:.5rem 0;box-shadow:0 1px 3px #0002}
+  button,a.btn{background:linear-gradient(#cf2c3e,var(--deep));color:#fff;cursor:pointer;text-decoration:none;display:inline-block;padding:.6rem .95rem;border-radius:10px;border:1px solid var(--gold);box-shadow:0 2px 6px #0005}
+  button.alt,a.alt{background:var(--cream);color:var(--deep);border:1px solid var(--gold)}
+  button:disabled{opacity:.6}
+  .card{display:flex;gap:.8rem;background:var(--cream);color:#2a2622;border-radius:12px;padding:.8rem;margin:.6rem 0;border:1px solid var(--gold);box-shadow:0 3px 10px #0004}
   .card img{width:80px;height:80px;object-fit:contain;flex:none}
-  .card p{margin:.2rem 0;font-size:.85rem;color:#555}
+  .card p{margin:.2rem 0;font-size:.88rem;color:#555}
   .card b{display:block}
-  .spin{font-size:2rem;text-align:center;padding:1.5rem;background:#fff;border-radius:12px;margin:1rem 0}
-  .over{color:#c0392b;font-weight:bold} .err{color:#c0392b} .muted{color:#777;font-size:.85rem}
-  table{width:100%;border-collapse:collapse} td{vertical-align:top;border-top:1px solid #ecc;padding:.5rem .3rem}
+  .card .muted{color:#666}
+  .spin{font-family:'Cormorant Garamond',Georgia,serif;font-size:2.2rem;text-align:center;padding:1.5rem;background:var(--cream);color:var(--green);border-radius:14px;margin:1rem 0;border:2px solid var(--gold);box-shadow:0 4px 14px #0005}
+  .spin button{font-family:system-ui,sans-serif;font-size:1rem}
+  .over,.err{color:#ffb3ba;font-weight:600}
+  .muted{color:rgba(255,255,255,.72);font-size:.85rem}
+  table{width:100%;border-collapse:collapse} td{vertical-align:top;border-top:1px solid rgba(255,255,255,.2);padding:.6rem .3rem}
+  dialog{background:var(--cream);color:#2a2622}
+  dialog .muted{color:#666}
+  /* decorations */
+  #garland{position:absolute;top:0;left:0;right:0;height:120px;pointer-events:none;z-index:1}
+  #garland svg{display:block;width:100%;height:120px}
+  .tree{position:fixed;bottom:0;width:250px;pointer-events:none;z-index:1;filter:drop-shadow(0 0 18px rgba(255,220,140,.25))}
+  .tree.l{left:6px} .tree.r{right:6px;transform:scaleX(-1)}
+  .tw{animation:tw 2.6s ease-in-out infinite}
+  @keyframes tw{50%{opacity:.25}}
+  #snow{position:fixed;inset:0;pointer-events:none;z-index:6}
+  #music{position:fixed;top:12px;right:12px;z-index:10;border-radius:999px;font-size:.9rem}
+  @media (max-width:980px){.tree{width:92px}h1{font-size:2.8rem}}
+  @media (prefers-reduced-motion:reduce){.tw{animation:none}}
 </style>
 </head>
 <body>
-<h1>🎅 Secret Santa</h1>
+<div id="garland"></div>
+<canvas id="snow"></canvas>
+<div class="tree l" id="treeL"></div><div class="tree r" id="treeR"></div>
+<button id="music" class="alt" aria-pressed="false">♪ Play carols</button>
+<header><h1>Secret Santa</h1><div class="kicker"><svg class="holly" viewBox="0 0 64 40" aria-hidden="true"><g transform="translate(32 22)"><path d="M0 0C-6 -14 -24 -16 -30 -6C-24 -2 -26 4 -20 6C-16 10 -8 8 0 0Z" fill="#2a7a56" stroke="#0f3a28"/><path d="M0 0C6 -14 24 -16 30 -6C24 -2 26 4 20 6C16 10 8 8 0 0Z" fill="#3f9a70" stroke="#0f3a28"/><path d="M-26 -5L-2 -1M26 -5L2 -1" stroke="#0f3a28" stroke-width="1" fill="none"/><circle cx="-3" cy="2" r="5" fill="#d92b3d"/><circle cx="4" cy="3" r="5" fill="#b3202f"/><circle cx="0" cy="8" r="5" fill="#d92b3d"/><circle cx="-4.5" cy="0.5" r="1.3" fill="#ffd0d6"/><circle cx="2.5" cy="1.5" r="1.3" fill="#ffd0d6"/></g></svg> &nbsp;merry &amp; bright&nbsp; <svg class="holly" style="transform:scaleX(-1)" viewBox="0 0 64 40" aria-hidden="true"><g transform="translate(32 22)"><path d="M0 0C-6 -14 -24 -16 -30 -6C-24 -2 -26 4 -20 6C-16 10 -8 8 0 0Z" fill="#2a7a56" stroke="#0f3a28"/><path d="M0 0C6 -14 24 -16 30 -6C24 -2 26 4 20 6C16 10 8 8 0 0Z" fill="#3f9a70" stroke="#0f3a28"/><path d="M-26 -5L-2 -1M26 -5L2 -1" stroke="#0f3a28" stroke-width="1" fill="none"/><circle cx="-3" cy="2" r="5" fill="#d92b3d"/><circle cx="4" cy="3" r="5" fill="#b3202f"/><circle cx="0" cy="8" r="5" fill="#d92b3d"/><circle cx="-4.5" cy="0.5" r="1.3" fill="#ffd0d6"/><circle cx="2.5" cy="1.5" r="1.3" fill="#ffd0d6"/></g></svg></div></header>
 <div id="app"></div>
 <script>
 const $ = (s) => document.querySelector(s);
@@ -162,6 +198,206 @@ async function player() {
 }
 
 (role === 'h' ? host() : role === 'p' ? player() : Promise.resolve(home())).catch((e) => (app.innerHTML = `<p class="err">${esc(e.message)}</p>`));
+</script>
+<script>
+/* ---- Decorations: garland, trees, holly, snow, music box carols (same on every page) ---- */
+(() => {
+  const f = (n) => n.toFixed(1);
+  const mk = (s0) => { let s = s0; return () => (s = (s * 16807) % 2147483647) / 2147483647; };
+  const LIGHTS = ['#fff6d6', '#ff7a7a', '#ffd27a', '#a8f0b4', '#ffffff'];
+  const BAUBLES = [['#e8c86a', '#9a7424'], ['#d92b3d', '#7a0f1c'], ['#f4f4f4', '#aab4bd'], ['#c9a24a', '#8a6420']];
+
+  // Pine garland across the top, sized to the window so it never crowds the title.
+  function garland() {
+    const rnd = mk(7), W = innerWidth, swags = Math.max(3, Math.round(W / 210)), sw = W / swags;
+    let g = '', lights = '', top = '';
+    for (let k = 0; k < swags; k++) {
+      const x0 = k * sw, cx = x0 + sw / 2, x1 = x0 + sw;
+      const pt = (t) => [(1 - t) ** 2 * x0 + 2 * (1 - t) * t * cx + t * t * x1, (1 - t) ** 2 * 8 + 2 * (1 - t) * t * 104 + t * t * 8];
+      for (let t = 0; t <= 1; t += 6 / sw) {
+        const [x, y] = pt(t);
+        for (let n = 0; n < 4; n++) {
+          const a = (rnd() * 150 + 15) * Math.PI / 180, l = 9 + rnd() * 12, d = rnd() < 0.5 ? -1 : 1;
+          g += `<line x1="${f(x)}" y1="${f(y)}" x2="${f(x + Math.cos(a) * l * d)}" y2="${f(y + Math.sin(a) * l)}" stroke="${['#0f3a28', '#1b5b40', '#2a7a56', '#3f9a70'][n]}" stroke-width="2.6" stroke-linecap="round"/>`;
+        }
+        if (rnd() < 0.07) for (let b = 0; b < 3; b++) g += `<circle cx="${f(x + b * 5 - 5)}" cy="${f(y + 8 + (b % 2) * 4)}" r="3.4" fill="#d92b3d"/><circle cx="${f(x + b * 5 - 5.8)}" cy="${f(y + 7)}" r="1" fill="#ffd0d6"/>`;
+      }
+      for (let t = 0.06; t < 1; t += 0.09) {
+        const [x, y] = pt(t), c = LIGHTS[Math.floor(rnd() * LIGHTS.length)];
+        lights += `<g class="tw" style="animation-delay:${f(rnd() * 3)}s"><circle cx="${f(x)}" cy="${f(y + 10)}" r="10" fill="${c}" opacity=".3"/><circle cx="${f(x)}" cy="${f(y + 10)}" r="3.2" fill="${c}"/></g>`;
+      }
+    }
+    for (let k = 0; k <= swags; k++) {
+      const x = k * sw, y = 40 + (k % 2) * 14, [hi, lo] = BAUBLES[k % BAUBLES.length];
+      top += `<line x1="${f(x)}" y1="8" x2="${f(x)}" y2="${y - 13}" stroke="#c9a24a" stroke-width="1.2"/><rect x="${f(x - 3.5)}" y="${y - 16}" width="7" height="5" rx="1" fill="#e3bd6a"/>
+        <circle cx="${f(x)}" cy="${y}" r="13" fill="${lo}"/><circle cx="${f(x - 1.5)}" cy="${f(y - 1.5)}" r="11.5" fill="${hi}"/><ellipse cx="${f(x - 4.5)}" cy="${f(y - 5.5)}" rx="3.5" ry="2" fill="#fff" opacity=".6" transform="rotate(-35 ${f(x - 4.5)} ${f(y - 5.5)})"/>`;
+    }
+    document.getElementById('garland').innerHTML = `<svg viewBox="0 0 ${f(W)} 120" aria-hidden="true">${g}${lights}${top}</svg>`;
+  }
+
+  // A decorated Christmas tree with gold star, baubles, lights, tinsel and presents.
+  function tree() {
+    const rnd = mk(42);
+    const tiers = [[20, 112, 52], [68, 172, 70], [118, 240, 88]]; // [apexY, baseY, half-width]
+    let s = '<defs><linearGradient id="tg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#3fa06f"/><stop offset="1" stop-color="#0f4a30"/></linearGradient><radialGradient id="sg"><stop offset="0" stop-color="#fff3b0"/><stop offset="1" stop-color="#ffd24a" stop-opacity="0"/></radialGradient></defs>';
+    s += '<rect x="88" y="236" width="24" height="26" fill="#6b4226"/>';
+    tiers.forEach(([a, b, hw]) => { s += `<path d="M100 ${a} L${100 + hw} ${b} Q100 ${b + 14} ${100 - hw} ${b} Z" fill="url(#tg)" stroke="#0b3a27" stroke-width="1.5"/>`; });
+    tiers.forEach(([a, b, hw]) => { const y = b - 16; s += `<path d="M${100 - hw * 0.8} ${y} Q100 ${y + 26} ${100 + hw * 0.8} ${y}" fill="none" stroke="#e3bd6a" stroke-width="2.4" stroke-dasharray="1 5" stroke-linecap="round"/>`; });
+    for (let i = 0; i < 26; i++) {
+      const [a, b, hw] = tiers[Math.floor(rnd() * 3)], y = a + 24 + rnd() * (b - a - 34), w = hw * (y - a) / (b - a) * 0.82, x = 100 + (rnd() * 2 - 1) * w;
+      if (i % 3 === 0) { const c = LIGHTS[Math.floor(rnd() * LIGHTS.length)]; s += `<g class="tw" style="animation-delay:${f(rnd() * 3)}s"><circle cx="${f(x)}" cy="${f(y)}" r="7" fill="${c}" opacity=".35"/><circle cx="${f(x)}" cy="${f(y)}" r="2.6" fill="${c}"/></g>`; }
+      else { const [hi, lo] = BAUBLES[Math.floor(rnd() * BAUBLES.length)]; s += `<circle cx="${f(x)}" cy="${f(y)}" r="6.2" fill="${lo}"/><circle cx="${f(x - 0.6)}" cy="${f(y - 0.6)}" r="5.4" fill="${hi}"/><circle cx="${f(x - 2)}" cy="${f(y - 2.2)}" r="1.4" fill="#fff" opacity=".7"/>`; }
+    }
+    const star = [...Array(10)].map((_, i) => { const r = i % 2 ? 6 : 14, t = i * Math.PI / 5 - Math.PI / 2; return f(100 + r * Math.cos(t)) + ',' + f(18 + r * Math.sin(t)); }).join(' ');
+    s += `<g class="tw"><circle cx="100" cy="18" r="30" fill="url(#sg)"/></g><polygon points="${star}" fill="#ffd24a" stroke="#c9961f" stroke-width="1"/>`;
+    [[34, 12, '#b3202f', '#e3bd6a'], [62, 18, '#f4f4f4', '#b3202f'], [118, 14, '#e3bd6a', '#14573a'], [140, 10, '#b3202f', '#f4f4f4']].forEach(([x, w, c, r], i) => {
+      const h = w + (i % 2) * 4;
+      s += `<rect x="${x}" y="${290 - h}" width="${w + 12}" height="${h}" fill="${c}" stroke="#0004"/><rect x="${x + (w + 12) / 2 - 2}" y="${290 - h}" width="4" height="${h}" fill="${r}"/><rect x="${x}" y="${290 - h / 2 - 2}" width="${w + 12}" height="4" fill="${r}"/>`;
+    });
+    return `<svg viewBox="0 0 200 296" aria-hidden="true">${s}</svg>`;
+  }
+  document.getElementById('treeL').innerHTML = document.getElementById('treeR').innerHTML = tree();
+
+  garland();
+  let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(garland, 150); });
+
+  // Soft white glowing snowfall (still for reduced-motion users).
+  const cv = document.getElementById('snow'), c = cv.getContext('2d');
+  const flakes = Array.from({ length: 120 }, () => ({ x: Math.random(), y: Math.random(), r: 1.3 + Math.random() * 3.2, v: 0.0007 + Math.random() * 0.002, p: Math.random() * 6 }));
+  const size = () => { cv.width = innerWidth; cv.height = innerHeight; };
+  addEventListener('resize', size); size();
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    (function tick(ts) {
+      c.clearRect(0, 0, cv.width, cv.height);
+      c.shadowColor = 'rgba(255,255,255,.9)'; c.shadowBlur = 8; c.fillStyle = 'rgba(255,255,255,.92)';
+      for (const s of flakes) {
+        s.y += s.v; if (s.y > 1.03) { s.y = -0.03; s.x = Math.random(); }
+        c.beginPath(); c.arc((s.x + Math.sin(ts / 2400 + s.p) * 0.015) * cv.width, s.y * cv.height, s.r, 0, 7); c.fill();
+      }
+      requestAnimationFrame(tick);
+    })(0);
+  }
+
+  // Music box carols (both tunes are public domain), synthesised so there are no audio files to host.
+  const N = { A3: 220, C4: 261.63, 'C#4': 277.18, D4: 293.66, E4: 329.63, F4: 349.23, 'F#4': 369.99, G4: 392, A4: 440, Bb4: 466.16, B4: 493.88, C5: 523.25, 'C#5': 554.37, D5: 587.33, E5: 659.25, 'F#5': 739.99, G5: 783.99 };
+  const CH = { B: 123.47, Bb: 116.54, C: 130.81, D: 146.83, E: 164.81, F: 174.61, 'F#': 185, G: 196, A: 220 }; // chord roots (bass register)
+  const ARP = [1, 1.2599, 1.4983, 1.2599], ARPM = [1, 1.1892, 1.4983, 1.1892]; // major / minor triad pattern
+  // Shared chord phrases: [root, beats, 'm' for minor]
+  const XT_A = [['D', 1], ['G', 2], ['D', 1], ['G', 3], ['A', 2, 'm'], ['D', 1], ['D', 1], ['G', 1]];
+  const FN_B = [[['D', 2], ['B', 1, 'm']], [['A', 3]], [['D', 2], ['G', 1]], [['D', 2], ['G', 1]], [['D', 2], ['G', 1]], [['D', 1], ['E', 1, 'm'], ['A', 1]], [['D', 2], ['A', 1]], [['D', 2], ['A', 1]]].flat();
+  const AM_A = [['G', 2], ['D', 1], ['G', 3], ['G', 2], ['E', 1, 'm'], ['A', 3, 'm'], ['D', 3], ['G', 3]];
+  // [title, melody 'note:beats' (R = rest), chords, seconds per beat]. Ten public-domain carols, played in a loop.
+  const TUNES = [
+    ['Jingle Bells', 'E4:1 E4:1 E4:2 E4:1 E4:1 E4:2 E4:1 G4:1 C4:1.5 D4:.5 E4:4 F4:1 F4:1 F4:1.5 F4:.5 F4:1 E4:1 E4:1 E4:.5 E4:.5 E4:1 D4:1 D4:1 E4:1 D4:2 G4:2',
+      [['C', 16], ['F', 4], ['C', 4], ['G', 8]], 0.36],
+    ['Deck the Halls', 'A4:1.5 G4:.5 F#4:1 E4:1 D4:1 E4:1 F#4:1 D4:1 E4:.5 F#4:.5 G4:.5 E4:.5 F#4:1.5 E4:.5 D4:1 C#4:1 D4:2 ' +
+      'A4:1.5 G4:.5 F#4:1 E4:1 D4:1 E4:1 F#4:1 D4:1 E4:.5 F#4:.5 G4:.5 E4:.5 F#4:1.5 E4:.5 D4:1 C#4:1 D4:2 ' +
+      'E4:1.5 F#4:.5 G4:1 E4:1 F#4:1.5 G4:.5 A4:1 E4:1 F#4:.5 G4:.5 A4:1 B4:.5 C#5:.5 D5:1 C#5:1 B4:1 A4:2 ' +
+      'A4:1.5 G4:.5 F#4:1 E4:1 D4:1 E4:1 F#4:1 D4:1 B4:.5 B4:.5 B4:.5 B4:.5 A4:1.5 G4:.5 F#4:1 E4:1 D4:2',
+      [['D', 8], ['A', 2], ['D', 6], ['D', 8], ['A', 2], ['D', 6], ['A', 4], ['D', 8], ['A', 4], ['D', 8], ['G', 2], ['D', 2], ['D', 1], ['A', 1], ['D', 2]], 0.34],
+    ['Silent Night', 'A4:.75 B4:.25 A4:.5 F#4:1.5 A4:.75 B4:.25 A4:.5 F#4:1.5 E5:1 E5:.5 C#5:1 C#5:.5 D5:1 D5:.5 A4:1 A4:.5 ' +
+      'B4:1 B4:.5 D5:.5 C#5:.5 B4:.5 A4:.75 B4:.25 A4:.5 F#4:1.5 B4:1 B4:.5 D5:.5 C#5:.5 B4:.5 A4:.75 B4:.25 A4:.5 F#4:1.5 ' +
+      'E5:1 E5:.5 G5:.5 E5:.5 C#5:.5 D5:1.5 F#5:1.5 D5:.5 A4:.5 F#4:.5 A4:.5 G4:.5 E4:.5 D4:.75 E4:.25 F#4:.5 A3:1 F#4:.5',
+      [['D', 6], ['A', 3], ['D', 3], ['G', 3], ['D', 3], ['G', 3], ['D', 3], ['A', 3], ['D', 9]], 0.7],
+    ['We Wish You a Merry Christmas', 'D4:1 G4:1 G4:.5 A4:.5 G4:.5 F#4:.5 E4:1 E4:1 E4:1 A4:1 A4:.5 B4:.5 A4:.5 G4:.5 F#4:1 D4:1 D4:1 B4:1 B4:.5 C5:.5 B4:.5 A4:.5 G4:1 E4:1 D4:.5 D4:.5 E4:1 A4:1 F#4:1 G4:3',
+      [['D', 1], ['G', 3], ['C', 3], ['D', 6], ['G', 3], ['C', 3], ['D', 3], ['G', 3]], 0.42],
+    ['Joy to the World', 'C5:1 B4:.75 A4:.25 G4:1.5 F4:.5 E4:1 D4:1 C4:1.5 G4:.5 A4:1.5 A4:.5 B4:1.5 B4:.5 C5:1.5 C5:.5 ' +
+      'C5:.5 B4:.5 A4:.5 G4:.5 G4:.75 F4:.25 E4:.5 C5:.5 C5:.5 B4:.5 A4:.5 G4:.5 G4:.75 F4:.25 E4:.5 E4:.5 ' +
+      'E4:.5 E4:.5 E4:.5 E4:.25 F4:.25 G4:1.5 F4:.25 E4:.25 D4:.5 D4:.5 D4:.5 D4:.25 E4:.25 F4:1.5 E4:.25 D4:.25 ' +
+      'C4:.5 C5:1 A4:.5 G4:.75 F4:.25 E4:.5 F4:.5 E4:1 D4:1 C4:2',
+      [['C', 2], ['G', 2], ['C', 4], ['F', 2], ['C', 2], ['G', 2], ['C', 2], ['G', 2], ['C', 4], ['C', 4], ['G', 4], ['F', 2], ['C', 2], ['G', 2], ['C', 2]], 0.4],
+    ['O Christmas Tree', 'D4:1 G4:.75 G4:.25 G4:1 A4:1 B4:.75 B4:.25 B4:1.5 B4:.5 A4:.5 B4:.5 C5:1 F#4:1 A4:1 G4:1 ' +
+      'D4:1 G4:.75 G4:.25 G4:1 A4:1 B4:.75 B4:.25 B4:1.5 B4:.5 A4:.5 B4:.5 C5:1 F#4:1 A4:1 G4:1 ' +
+      'R:.5 D5:.5 D5:.5 B4:.5 E5:1.5 D5:.5 D5:.5 C5:.5 C5:1.5 C5:.5 C5:.5 A4:.5 D5:1.5 C5:.5 C5:.5 B4:.5 B4:1 D4:1 ' +
+      'G4:.75 G4:.25 G4:1 A4:1 B4:.75 B4:.25 B4:1.5 B4:.5 A4:.5 B4:.5 C5:1 F#4:1 A4:1 G4:1',
+      [...XT_A, ...XT_A, ['G', 1], ['G', 1], ['C', 2], ['D', 3], ['D', 3], ['G', 2], ['D', 1], ['G', 2], ['D', 1], ['G', 3], ['A', 2, 'm'], ['D', 1], ['D', 1], ['G', 1]], 0.5],
+    ['The First Noel', 'F#4:.5 E4:.5 ' +
+      'D4:1.5 E4:.5 F#4:.5 G4:.5 A4:2 B4:.5 C#5:.5 D5:1 C#5:1 B4:1 A4:2 B4:.5 C#5:.5 D5:1 C#5:1 B4:1 A4:1 B4:1 C#5:1 D5:1 A4:1 G4:1 F#4:2 F#4:.5 E4:.5 ' +
+      'D4:1.5 E4:.5 F#4:.5 G4:.5 A4:2 B4:.5 C#5:.5 D5:1 C#5:1 B4:1 A4:2 B4:.5 C#5:.5 D5:1 C#5:1 B4:1 A4:1 B4:1 C#5:1 D5:1 A4:1 G4:1 F#4:2 F#4:.5 E4:.5 ' +
+      'D4:1.5 E4:.5 F#4:.5 G4:.5 A4:2 D5:.5 C#5:.5 B4:2 B4:1 A4:3 D5:1 C#5:1 B4:1 A4:1 B4:1 C#5:1 D5:1 A4:1 G4:1 F#4:3',
+      [['D', 1], ...FN_B, ...FN_B, ['D', 2], ['B', 1, 'm'], ['F#', 2, 'm'], ['B', 1, 'm'], ['G', 3], ['D', 3], ['B', 1, 'm'], ['F#', 1, 'm'], ['G', 1], ['D', 1], ['G', 1], ['A', 1], ['D', 2], ['A', 1], ['D', 3]], 0.46],
+    ['O Come, All Ye Faithful', 'F4:1 F4:2 C4:1 F4:1 G4:2 C4:2 A4:1 G4:1 A4:1 Bb4:1 A4:2 G4:1 F4:1 F4:2 E4:1 D4:1 E4:1 F4:1 G4:1 A4:1 E4:2 D4:1.5 C4:.5 C4:3 R:1 ' +
+      'C5:2 Bb4:1 A4:1 Bb4:2 A4:2 G4:1 A4:1 F4:1 G4:1 E4:1.5 D4:.5 C4:1 F4:1 F4:1 E4:1 F4:1 G4:1 F4:2 C4:1 A4:1 A4:1 G4:1 A4:1 Bb4:1 A4:2 G4:1 A4:1 ' +
+      'Bb4:1 A4:1 G4:1 F4:1 E4:2 F4:1 Bb4:1 A4:2 G4:1.5 F4:.5 F4:3',
+      [['F', 1], ['F', 4], ['C', 4], ['F', 3], ['Bb', 1], ['F', 2], ['C', 2], ['D', 3, 'm'], ['G', 1], ['C', 3], ['F', 1], ['C', 2], ['G', 2], ['C', 4],
+        ['F', 4], ['G', 2, 'm'], ['F', 2], ['C', 2], ['G', 2, 'm'], ['C', 4], ['F', 1], ['C', 1], ['F', 1], ['C', 1], ['F', 4], ['F', 1], ['C', 1], ['F', 1], ['C', 1],
+        ['F', 2], ['C', 1], ['F', 1], ['C', 1], ['F', 1], ['C', 1], ['F', 1], ['C', 2], ['F', 1], ['Bb', 1], ['F', 2], ['C', 2], ['F', 3]], 0.42],
+    ['Hark! The Herald Angels Sing', 'D4:1 G4:1 G4:1.5 F#4:.5 G4:1 B4:1 B4:1 A4:1 D5:1 D5:1 D5:1.5 C5:.5 B4:1 A4:1 B4:2 ' +
+      'D4:1 G4:1 G4:1.5 F#4:.5 G4:1 B4:1 B4:1 A4:1 D5:1 A4:1 A4:1.5 F#4:.5 F#4:1 E4:1 D4:2 ' +
+      'D5:1 D5:1 D5:1 G4:1 C5:1 B4:1 B4:1 A4:1 D5:1 D5:1 D5:1 G4:1 C5:1 B4:1 B4:1 A4:1 ' +
+      'E5:1 E5:1 E5:1 D5:1 C5:1 B4:1 C5:2 A4:1 B4:.5 C5:.5 D5:1.5 G4:.5 G4:1 A4:1 B4:2 ' +
+      'E5:1.5 E5:.5 E5:1 D5:1 C5:1 B4:1 C5:2 A4:1 B4:.5 C5:.5 D5:1.5 G4:.5 G4:1 A4:1 G4:2',
+      [['G', 2], ['D', 2], ['G', 4], ['G', 2], ['C', 2], ['D', 2], ['G', 2], ['G', 2], ['D', 2], ['G', 4], ['D', 4], ['D', 4], ['G', 4], ['C', 2], ['D', 2], ['G', 4], ['C', 2], ['D', 2],
+        ['C', 4], ['C', 4], ['D', 4], ['G', 4], ['C', 4], ['C', 4], ['D', 4], ['G', 4]], 0.38],
+    ['Away in a Manger', 'D4:1 G4:1 G4:1 A4:.5 B4:.5 G4:1 G4:1 B4:.5 C5:.5 D5:1 D5:1 E5:1 C5:2 A4:.5 B4:.5 C5:1 C5:1 D5:1 B4:1 B4:1 G4:.5 B4:.5 A4:1 E4:1 G4:1 F#4:2 D4:1 ' +
+      'G4:1 G4:1 A4:.5 B4:.5 G4:1 G4:1 B4:.5 C5:.5 D5:1 D5:1 E5:1 C5:2 A4:.5 B4:.5 C5:1 C5:1 D5:1 B4:1 B4:1 G4:.5 B4:.5 A4:1 E4:1 F#4:1 G4:2',
+      [['D', 1], ...AM_A, ['A', 3], ['D', 3], ['G', 2], ['D', 1], ['G', 3], ['G', 2], ['E', 1, 'm'], ['A', 3, 'm'], ['D', 3], ['G', 3], ['A', 2, 'm'], ['D', 1], ['G', 2]], 0.5],
+  ];
+  let ctx, bus, timer, i = 0;
+
+  // Warm room: dry signal plus a soft synthetic reverb, through a gentle compressor.
+  const mkBus = () => {
+    const len = ctx.sampleRate * 2.6, ir = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let k = 0; k < len; k++) d[k] = (Math.random() * 2 - 1) * Math.pow(1 - k / len, 2.8); }
+    const conv = ctx.createConvolver(), dry = ctx.createGain(), wet = ctx.createGain(), comp = ctx.createDynamicsCompressor();
+    conv.buffer = ir; dry.gain.value = 0.85; wet.gain.value = 0.38;
+    const b = ctx.createGain(); b.gain.value = 0.9;
+    b.connect(dry); b.connect(conv); conv.connect(wet); dry.connect(comp); wet.connect(comp); comp.connect(ctx.destination);
+    return b;
+  };
+  // Celesta/music-box bell: a bright strike plus softer overtones that ring and fade.
+  const PARTIALS = [[1, 1, 1.5], [2, 0.34, 1.0], [3, 0.14, 0.6], [5.4, 0.06, 0.2]]; // [ratio, level, decay seconds]
+  const bell = (fr, t, d, gain, ring = 1) => PARTIALS.forEach(([m, lv, dec]) => {
+    const o = ctx.createOscillator(), v = ctx.createGain(), len = dec * ring * (0.8 + Math.min(d, 2) * 0.45);
+    o.frequency.value = fr * m;
+    v.gain.setValueAtTime(0.0001, t); v.gain.linearRampToValueAtTime(gain * lv, t + 0.005); v.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    o.connect(v).connect(bus); o.start(t); o.stop(t + len + 0.1);
+  });
+  const next = () => {
+    const [title, melody, chords, spb] = TUNES[i++ % TUNES.length];
+    const t0 = ctx.currentTime + 0.3;
+    let t = t0;
+    for (const s of melody.split(' ').filter(Boolean)) {
+      const [n, b] = s.split(':');
+      if (n !== 'R') bell(N[n], t + (Math.random() - 0.5) * 0.012, b * spb, 0.5);
+      t += b * spb;
+    }
+    let c = t0;
+    for (const [r, beats, minor] of chords) {
+      const pattern = minor ? ARPM : ARP;
+      bell(CH[r], c, beats * spb, 0.5, 2.2); // bass, rings long
+      for (let k = 1; k < beats; k++) bell(CH[r] * 2 * pattern[k % 4], c + k * spb, spb, 0.16); // soft rolling chord
+      c += beats * spb;
+    }
+    btn.textContent = '🔊 ' + title + ' (tap to mute)';
+    timer = setTimeout(next, (t - ctx.currentTime + 2.5) * 1000);
+  };
+  const btn = document.getElementById('music');
+  // Autoplay: on by default. Browsers only allow sound after a first tap/key, so if it is blocked
+  // we wait for the first interaction anywhere on the page. Muting is remembered across pages.
+  let started = false, startedAt = 0;
+  const begin = () => {
+    if (!ctx || started) return;
+    ctx.resume().then(() => { if (ctx && ctx.state === 'running' && !started) { started = true; startedAt = Date.now(); next(); } });
+  };
+  const gestures = ['pointerdown', 'keydown', 'touchstart'];
+  const onGesture = () => { if (ctx) begin(); };
+  const play = () => {
+    ctx = new AudioContext(); bus = mkBus(); started = false; begin();
+    if (!started) { btn.textContent = '♪ Tap anywhere for carols'; gestures.forEach((g) => document.addEventListener(g, onGesture, { once: true })); }
+    try { localStorage.music = 'on'; } catch {}
+  };
+  const mute = () => {
+    clearTimeout(timer); if (ctx) ctx.close(); ctx = null; started = false;
+    gestures.forEach((g) => document.removeEventListener(g, onGesture));
+    btn.textContent = '🔇 Carols off';
+    try { localStorage.music = 'off'; } catch {}
+  };
+  // A tap that just started the music (even if it landed on this button) must not also mute it.
+  btn.onclick = (e) => { e.stopPropagation(); if (Date.now() - startedAt < 800) return; ctx ? mute() : play(); };
+  let muted = false; try { muted = localStorage.music === 'off'; } catch {}
+  if (muted) btn.textContent = '🔇 Carols off'; else play();
+})();
 </script>
 </body>
 </html>
