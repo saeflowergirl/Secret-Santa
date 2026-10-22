@@ -111,7 +111,7 @@ module.exports = async (req, res) => {
       for (const c of b.couples || []) {
         const pair = c.map((n) => clean(n, 40));
         const miss = pair.find((n) => !names.includes(n));
-        if (pair.length !== 2 || miss) return send(res, 400, { error: `Couple names must match the name list: ${miss || pair.join(' + ')}` });
+        if (pair.length < 2 || miss) return send(res, 400, { error: `Couple names must match the name list: ${miss || pair.join(' + ')}` });
         couples.push(pair);
       }
       const to = draw(names, couples);
@@ -143,10 +143,10 @@ module.exports = async (req, res) => {
     // Add someone after the draw: splice them into the ring (A->B becomes A->new->B) so nobody else's draw changes.
     if (a === 'add') {
       if (!host) return send(res, 403, { error: 'Host only' });
-      const name = clean(b.name, 40), partner = clean(b.partner, 40);
+      const name = clean(b.name, 40), partners = (b.partners || []).map((n) => clean(n, 40));
       if (!name || game.players.length >= 40 || game.players.some((p) => p.name.toLowerCase() === name.toLowerCase())) return send(res, 400, { error: 'Name is missing or already in the group' });
-      if (partner && !game.players.some((p) => p.name === partner)) return send(res, 400, { error: 'Partner must already be in the group' });
-      const couples = [...(game.couples || []), ...(partner ? [[name, partner]] : [])];
+      if (partners.some((n) => !game.players.some((p) => p.name === n))) return send(res, 400, { error: 'Partners must already be in the group' });
+      const couples = [...(game.couples || []), ...(partners.length ? [[name, ...partners]] : [])];
       const bad = badPair(couples);
       const states = await Promise.all(game.players.map((_, i) => state(game, i)));
       const spots = game.players.map((_, i) => i).filter((i) => !states[i].revealed && !bad(game.players[i].name, name) && !bad(name, game.players[game.players[i].target].name));
