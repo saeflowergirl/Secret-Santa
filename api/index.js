@@ -4,7 +4,7 @@ const fs = require('fs');
 
 const BUDGET = 500;
 const MAX_ITEMS = 5;
-const SHOP = /(^|\.)(takealot\.com|amazon\.[a-z.]+|temu\.com)$/;
+const SHOP = /(^|\.)(takealot\.com|amazon\.[a-z.]+|temu\.(?:com|to))$/;
 // Vercel may prefix the integration's env vars (e.g. STORAGE_KV_REST_API_URL), so match on the suffix.
 const env = (suffix) => process.env[Object.keys(process.env).find((k) => k.endsWith(suffix)) || ''];
 const U = env('KV_REST_API_URL') || env('UPSTASH_REDIS_REST_URL');
@@ -79,7 +79,9 @@ const text = (html) => decode(String(html || '').replace(/<[^>]+>/g, ' ')).repla
 
 async function preview(raw) {
   let u;
-  try { u = new URL(raw); } catch { throw new Error('That is not a link'); }
+  // Accept a link with no https:// and the "check this out https://..." text that share buttons copy.
+  const pasted = String(raw || '').trim();
+  try { u = new URL(/(?:^|\s)(https?:\/\/\S+)/i.exec(pasted)?.[1] || 'https://' + pasted); } catch { throw new Error('That is not a link'); }
   if (!/^https?:$/.test(u.protocol) || !SHOP.test(u.hostname)) throw new Error('Only takealot.com, amazon and temu links are allowed');
   const item = { url: u.href, title: '', image: '', description: '', price: 0 };
   const plid = /PLID(\d+)/i.exec(u.pathname)?.[1];
@@ -115,7 +117,8 @@ async function preview(raw) {
       if ((r.headers.get('content-type') || '').startsWith('image/jpeg') && (await r.arrayBuffer()).byteLength > 1000) item.image = url; // a missing product returns a 43-byte blank gif
     } catch { /* no photo: the person can paste one */ }
   }  if (!item.title) {
-    const seg = u.pathname.split('/').filter((s) => s && !/^(dp|gp|product|goods\.html)$/i.test(s) && !/^(PLID|B0)\w+$/i.test(s) && !/^ref=/i.test(s)).sort((x, y) => y.length - x.length)[0] || '';
+    // A temu.to path is a code, not a name.
+    const seg = /^temu\.to$/.test(u.hostname) ? '' : u.pathname.split('/').filter((s) => s && !/^(dp|gp|product|goods\.html)$/i.test(s) && !/^(PLID|B0)\w+$/i.test(s) && !/^ref=/i.test(s)).sort((x, y) => y.length - x.length)[0] || '';
     item.title = seg ? decodeURIComponent(seg).replace(/-g-\d+\.html$/i, '').replace(/[-_]+/g, ' ') : (asin ? 'Amazon item' : 'Item') + ' (add name)';
   }
   item.title = item.title.split(' | ')[0].replace(/\s*-\s*Temu.*$/i, '').slice(0, 200);
