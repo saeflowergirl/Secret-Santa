@@ -97,9 +97,21 @@ async function api(a, data, qs = '') {
   if (!r.ok) throw new Error(j.error);
   return j;
 }
+// "1,299.50", "1 299,50", "1.299,50", "12,5", "R250" all work. The last separator is the decimal one when both appear;
+// a lone separator followed by exactly 3 digits is a thousands separator ("1,299"), otherwise it is the decimal point.
+const parsePrice = (v) => {
+  let t = String(v ?? '').replace(/[R\s]/gi, '');
+  const last = Math.max(t.lastIndexOf(','), t.lastIndexOf('.'));
+  const both = t.includes(',') && t.includes('.');
+  const lone = !both && last >= 0 && t.split(t[last]).length === 2 && !/^\d{3}$/.test(t.slice(last + 1));
+  t = both || lone ? t.slice(0, last).replace(/[.,]/g, '') + '.' + t.slice(last + 1) : t.replace(/[.,]/g, '');
+  const n = Math.round(Number(t) * 100) / 100;
+  return /^\d*\.?\d*$/.test(t) && n >= 0 ? n : NaN;
+};
+const money = (n) => (Number(n) || 0).toLocaleString('en-ZA', { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 });
 const ITEMS = [];
 const card = (i, extra = '') => `<div class="card">${i.image ? `<img src="${esc(i.image)}" referrerpolicy="no-referrer" alt="">` : ''}
-  <div><b>${esc(i.title)}</b><div>${i.price ? `<span class="price">R${esc(i.price)}</span>` : '<span class="noprice">No price yet</span>'}</div><button data-view="${ITEMS.push(i) - 1}">View</button> ${extra}</div></div>`;
+  <div><b>${esc(i.title)}</b><div>${i.price ? `<span class="price">R${money(i.price)}</span>` : '<span class="noprice">No price yet</span>'}</div><button data-view="${ITEMS.push(i) - 1}">View</button> ${extra}</div></div>`;
 
 // Item popup: native <dialog>, filled on demand.
 document.body.insertAdjacentHTML('beforeend', '<dialog id="dlg" style="max-width:480px;border-radius:12px;border:0;padding:1.2rem"></dialog>');
@@ -109,7 +121,7 @@ document.addEventListener('click', (e) => {
     const i = ITEMS[e.target.dataset.view];
     dlg.innerHTML = `${i.image ? `<img src="${esc(i.image)}" referrerpolicy="no-referrer" alt="" style="width:100%;max-height:260px;object-fit:contain">` : ''}
       <h3>${esc(i.title)}</h3><p>${esc(i.description) || '<span class="muted">No description available.</span>'}</p>
-      <p>${i.price ? `<span class="price big">R${esc(i.price)}</span>` : '<span class="noprice">No price yet</span>'}</p>
+      <p>${i.price ? `<span class="price big">R${money(i.price)}</span>` : '<span class="noprice">No price yet</span>'}</p>
       <a class="btn" href="${esc(i.url)}" target="_blank" rel="noopener">Go to shop</a> <button class="alt" data-close>Close</button>`;
     dlg.showModal();
   } else if (e.target.dataset.close != null || e.target === dlg) dlg.close();
@@ -193,7 +205,7 @@ async function host() {
     <table>${players.map((p) => `<tr><td><b>${esc(p.name)}</b><br><span class="muted">${p.revealed ? 'has spun' : 'not spun yet'}</span><br>
       <button class="alt" data-link="${esc(origin + '/p/' + p.token)}">Copy link</button></td>
       <td><button class="alt" data-reveal>Reveal</button>
-        <div hidden>gives to <b>${esc(p.gives)}</b><br>${p.items.length ? p.items.map((i) => `<div class="muted"><a href="${esc(i.url)}" target="_blank" rel="noopener">${esc(i.title)}</a> <b>${i.price ? 'R' + esc(i.price) : ''}</b></div>`).join('') : '<span class="muted">no wish list yet</span>'}</div></td></tr>`).join('')}</table>
+        <div hidden>gives to <b>${esc(p.gives)}</b><br>${p.items.length ? p.items.map((i) => `<div class="muted"><a href="${esc(i.url)}" target="_blank" rel="noopener">${esc(i.title)}</a> <b>${i.price ? 'R' + money(i.price) : ''}</b></div>`).join('') : '<span class="muted">no wish list yet</span>'}</div></td></tr>`).join('')}</table>
     <p class="muted">Budget R${budget} each. Wish lists update when you refresh.</p>
     <h2>Add someone</h2>
     <input id="newname" placeholder="Name"> <p class="muted">Couple with (tap anyone they must not draw, optional):</p><div class="pills" id="partnerP">${players.map((p) => `<span class="pill" data-partner="${esc(p.name)}">${esc(p.name)}</span>`).join('')}</div>
@@ -235,17 +247,17 @@ async function player() {
           <label class="muted">Item name <input class="wide" name="title" required maxlength="200"></label><br>
           <label class="muted">Description (optional) <input class="wide" name="description" maxlength="400"></label><br>
           <label class="muted">Link <input class="wide" name="url" required placeholder="https://..."></label><br>
-          <label class="muted">Cost in Rand <input name="price" type="number" min="0" required style="width:6rem" placeholder="e.g. 250"></label>
+          <label class="muted">Cost in Rand <input name="price" inputmode="decimal" required style="width:6rem" placeholder="e.g. 250"></label>
           <button>Add item</button>
         </form>
       </details>
       ${me.items.map((i, n) => card(i, `<br><label class="muted">Gift name <input class="wide" value="${esc(i.title)}" data-title="${n}"></label>
-        ${i.price ? '' : '<div class="nohint">Please enter the price yourself: type what you see on the shop\'s site, in Rand.</div>'}<label class="muted">Price in Rand <input class="${i.price ? '' : 'need'}" type="number" min="0" style="width:6rem" value="${esc(i.price || '')}" data-price="${n}" placeholder="e.g. 250"></label>
+        ${i.price ? '' : '<div class="nohint">Please enter the price yourself: type what you see on the shop\'s site, in Rand.</div>'}<label class="muted">Price in Rand <input class="${i.price ? '' : 'need'}" inputmode="decimal" style="width:6rem" value="${esc(i.price || '')}" data-price="${n}" placeholder="e.g. 250"></label>
         <button class="alt" data-rm="${n}">Remove</button>
         <details><summary class="muted">${i.image ? 'Change photo' : 'Add a photo (optional)'}</summary>
           <label class="muted">Right-click the product photo, choose Copy image address, paste here <input class="wide" value="${esc(i.image)}" data-image="${n}" placeholder="https://..."></label>
         </details>`)).join('')}
-      <p class="total">Total: <span class="${t > me.budget * 1.2 ? 'over' : ''}">R${t}</span> of R${me.budget}</p>
+      <p class="total">Total: <span class="${t > me.budget * 1.2 ? 'over' : ''}">R${money(t)}</span> of R${me.budget}</p>
       <div id="target"></div>`;
     renderSpin();
     if (me.revealed) renderTarget();
@@ -288,13 +300,14 @@ async function player() {
     if (me.items.length >= me.maxItems) return ($('#err').textContent = `Max ${me.maxItems} items`);
     const f = Object.fromEntries(new FormData(e.target));
     const url = f.url.trim();
-    const item = { title: f.title.trim(), description: f.description.trim(), url: /^https?:\/\//i.test(url) ? url : 'https://' + url, price: Number(f.price) || 0, image: '' };
+    const item = { title: f.title.trim(), description: f.description.trim(), url: /^https?:\/\//i.test(url) ? url : 'https://' + url, price: parsePrice(f.price), image: '' };
+    if (Number.isNaN(item.price)) return ($('#err').textContent = 'Cost should be a number, like 249,99');
     me.items.push(item);
     try { await save(); render(); } catch (x) { me.items.pop(); $('#err').textContent = x.message === 'Invalid URL' ? 'That is not a link' : x.message; }
   };
   app.onchange = async (e) => {
     const d = e.target.dataset;
-    if (d.price != null) me.items[d.price].price = Number(e.target.value) || 0;
+    if (d.price != null) me.items[d.price].price = parsePrice(e.target.value) || 0;
     else if (d.title != null) me.items[d.title].title = e.target.value.trim().slice(0, 200) || me.items[d.title].title;
     else if (d.image != null) me.items[d.image].image = e.target.value.trim();
     else return;
