@@ -228,7 +228,8 @@ module.exports = async (req, res) => {
       const st = await state(game, idx);
       st.items = (b.items || []).slice(0, MAX_ITEMS).map((i) => {
         const u = new URL(i.url);
-        if (!/^https?:$/.test(u.protocol) || !SHOP.test(u.hostname)) throw new Error('Bad item link');
+        // Typed-in items may link to any shop; only the auto-fill preview is limited to SHOP (it fetches the page server side).
+        if (!/^https?:$/.test(u.protocol)) throw new Error('Bad item link');
         return { url: u.href, title: clean(i.title, 200), image: /^https?:\/\//.test(i.image) ? clean(i.image, 600) : '', description: clean(i.description, 400), price: Math.max(0, Number(i.price) || 0) };
       });
       await set(`s:${game.id}:${idx}`, st);
